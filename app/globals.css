@@ -1,0 +1,91 @@
+/* app/globals.css */
+/* Tailwind v4 core import */
+@import "tailwindcss";
+
+/* ==============================
+   SixByFive Dev Theme (Tailwind v4 @theme)
+   ============================== */
+@theme {
+  /* Brand surfaces */
+  --color-sbf-bg: #050814;
+  --color-sbf-bgElevated: #0d1322;
+  --color-sbf-bgSoft: #10182a;
+  --color-sbf-border: #1b243b;
+
+  /* Text */
+  --color-sbf-text: #f8fafc;
+  --color-sbf-textMuted: #94a3b8;
+
+  /* Accents */
+  --color-sbf-accent: #2963ff;       /* main blue */
+  --color-sbf-accentLight: #548dff;  /* lighter blue */
+  --color-sbf-accentSoft: #a5bfff;   /* soft glow */
+
+  /* Utility colours */
+  --color-sbf-chip: #020617;
+  --color-sbf-chipBorder: #1f2937;
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+}
+
+/* ==============================
+   Global base styles
+   ============================== */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-sbf-bg);
+  color: var(--color-sbf-text);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background-color: rgba(41, 99, 255, 0.3);
+}
+
+/* ==============================
+   Helper classes (no Tailwind @apply)
+   ============================== */
+
+/* Subtle grid background for hero section */
+.hero-grid {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(148, 163, 184, 0.14) 1px,
+    transparent 0
+  );
+  background-size: 26px 26px;
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+/* Soft accent glow behind hero heading */
+.hero-glow {
+  position: absolute;
+  inset: -120px;
+  background: radial-gradient(
+    circle at top left,
+    rgba(84, 141, 255, 0.27),
+    transparent 60%
+  );
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* Keep content above hero-grid overlays */
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
