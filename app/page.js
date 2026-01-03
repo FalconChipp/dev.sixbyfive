@@ -1,123 +1,154 @@
 // app/page.js
-// Simple studio overview: what you run, what you’re good at, and a nod to the tools.
+// CHANGED:
+// - Keeps your hero + sections, but fixes the “jarring” feel by adding a consistent section rhythm
+// - Adds subtle dividers between blocks so transitions feel intentional
+// - Wraps the CONTACT area in the same <Section> system so it matches everything else
+// - Adjusts spacing so "Work" doesn't feel like it floats in a void
+// - Adds small optional “tone” wrappers so cards sit on a consistent backdrop (relies on Section wrapper styles you added)
 
-import ToolCard from "./components/ToolCards";
+import Container from "./components/ui/Container";
+import Button from "./components/ui/Button";
+import Section from "./components/ui/Section";
+import CaseStudies from "./components/CaseStudies";
+import Services from "./components/Services";
+import ProofStrip from "./components/ProofStrip";
+import Tooling from "./components/Tooling";
 
-const platforms = [
-  {
-    href: "https://tcg.sixbyfive.com",
-    name: "SixByFive TCG",
-    tagline:
-      "Web and mobile platform for tracking Pokémon collections, viewing UK-focused pricing, and (soon) trading and marketplace features.",
-    kind: "Platform",
-    meta: ["Next.js", "Custom backend", "GraphQL"]
-  },
-  {
-    href: "https://3dprinting.sixbyfive.com",
-    name: "3D Printing Studio",
-    tagline:
-      "Quote and job management for custom 3D printed parts, aimed at hobbyists and small-batch work.",
-    kind: "Product",
-    meta: ["3D printing", "Quoting flow"]
-  }
-];
+// Small helper divider (in case you want it even if Section showDivider=false somewhere)
+function Divider({ className = "" }) {
+  return <div className={`section-divider ${className}`} />;
+}
 
-const tools = [
-  {
-    href: "/tools/cardmarket-merge-exporter",
-    name: "Cardmarket Set Merge Exporter",
-    tagline:
-      "Userscript to merge Cardmarket base + additional buckets into a single canonical map keyed by set + collector number.",
-    kind: "Tooling",
-    meta: ["Userscript", "Cardmarket"]
-  },
-  {
-    href: "/tools/variant-mapper",
-    name: "Variant Mapper",
-    tagline:
-      "Browser tool that turns those exports into variants[] blocks for card metadata.",
-    kind: "Tooling",
-    meta: ["Frontend", "Metadata"]
-  },
-  {
-    href: "/tools/crosscheck-cardmarket-sources",
-    name: "Crosscheck CLI",
-    tagline:
-      "CLI to compare Cardmarket HTML, CSV, and internal IDs so issues show up in a report, not in production.",
-    kind: "Tooling",
-    meta: ["Node.js", "Data quality"]
-  }
-];
+function Hero() {
+  return (
+    <section className="pt-12 md:pt-16 pb-10 md:pb-14">
+      <Container>
+        <div className="surface p-7 md:p-12">
+          <div className="accent-line" />
+
+          <p className="mt-4 text-[11px] uppercase tracking-[0.26em] text-white/60">
+            Independent studio • UK • product-led engineering
+          </p>
+
+          <h1 className="mt-4 max-w-3xl text-[34px] leading-[1.06] md:text-[56px] font-semibold text-white">
+            We design and build platforms that ship — and keep running.
+          </h1>
+
+          <p className="mt-4 max-w-2xl text-[14px] md:text-[15px] leading-relaxed text-muted">
+            SixByFive is a small studio building collector-first products, workflow portals,
+            and the internal tooling that makes data and operations reliable.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button href="#work" variant="primary">See work</Button>
+            <Button href="#services" variant="secondary">Capabilities</Button>
+            {/* <Button href="#contact" variant="ghost">Contact →</Button> */}
+          </div>
+
+          <ProofStrip />
+        </div>
+      </Container>
+    </section>
+  );
+}
 
 export default function HomePage() {
   return (
-    <div className="space-y-10">
-      {/* HERO */}
-      <section className="space-y-3">
-        <p className="text-[11px] uppercase tracking-[0.25em] text-sbf-textMuted">
-          SixByFive · Studio
-        </p>
-        <h1 className="text-3xl font-semibold leading-tight md:text-4xl">
-          I build and run{" "}
-          <span className="text-sbf-accent">real products and tooling</span>{" "}
-          around trading cards and 3D printing.
-        </h1>
-        <p className="max-w-xl text-[14px] text-sbf-textMuted">
-          This page is a quick snapshot of what&apos;s live today – platforms,
-          smaller products, and some of the internal tools that keep everything
-          working.
-        </p>
-      </section>
+    <div>
+      <Hero />
 
-      {/* PLATFORMS / PRODUCTS */}
-      <section className="space-y-3">
-        <h2 className="text-[15px] font-semibold">Platforms &amp; products</h2>
-        <p className="text-[13px] text-sbf-textMuted">
-          Things that are live, used, and still evolving.
-        </p>
-        <div className="mt-3 grid gap-4 md:grid-cols-2">
-          {platforms.map((item) => (
-            <ToolCard key={item.name} item={item} />
-          ))}
-        </div>
-      </section>
+      {/* CHANGED: Explicit divider after hero to avoid “drop into void” */}
+      <Divider />
 
-      {/* CAPABILITIES */}
-      <section className="space-y-3">
-        <h2 className="text-[15px] font-semibold">What I&apos;m comfortable with</h2>
-        <div className="mt-2 grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-sbf-border bg-sbf-bgElevated px-4 py-3 text-[13px] text-sbf-textMuted">
-            <p className="mb-1 font-medium text-sbf-text">Product &amp; stack</p>
-            <ul className="ml-4 list-disc space-y-1">
-              <li>Next.js, React, Node, GraphQL / REST APIs.</li>
-              <li>Designing data models and background jobs.</li>
-              <li>Taking ideas from “sketch” to something people can click.</li>
-            </ul>
+      {/* WORK */}
+      <Section
+        id="work"
+        eyebrow="Selected work"
+        title="Products and portals in production"
+        subtitle="A small set of shipped systems — presented as outcomes, not experiments."
+        className="pt-8 md:pt-10"
+        showDivider={false} // divider already added above for cleaner rhythm
+      >
+        <CaseStudies />
+      </Section>
+
+      {/* TOOLING */}
+      <Section
+        id="tooling"
+        eyebrow="Tooling"
+        title="The systems behind the systems"
+        subtitle="Internal tooling that keeps data accurate, operations fast, and releases safe."
+      >
+        <Tooling />
+      </Section>
+
+      {/* SERVICES */}
+      <Section
+        id="services"
+        eyebrow="Capabilities"
+        title="What we deliver"
+        subtitle="Clear scope buckets that make it easy to understand how we can help."
+      >
+        <Services />
+      </Section>
+
+      {/* PROCESS */}
+      <Section
+        id="process"
+        eyebrow="Delivery"
+        title="How we work"
+        subtitle="Simple, structured, and designed to ship without chaos."
+      >
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="surface p-5">
+            <p className="text-[12px] font-semibold text-white">1) Define the milestone</p>
+            <p className="mt-2 text-[13px] text-muted">
+              Tight scope, clear acceptance criteria, and an agreed first release worth shipping.
+            </p>
           </div>
-          <div className="rounded-xl border border-sbf-border bg-sbf-bgElevated px-4 py-3 text-[13px] text-sbf-textMuted">
-            <p className="mb-1 font-medium text-sbf-text">Problem spaces</p>
-            <ul className="ml-4 list-disc space-y-1">
-              <li>Trading card metadata, pricing, and marketplaces.</li>
-              <li>3D printing workflows and quoting.</li>
-              <li>Glue work: Discord bots, WordPress / Shopify bridges, etc.</li>
-            </ul>
+
+          <div className="surface p-5">
+            <p className="text-[12px] font-semibold text-white">2) Build + iterate</p>
+            <p className="mt-2 text-[13px] text-muted">
+              Components + API contracts first, then refinement. No “big bang” rewrites.
+            </p>
+          </div>
+
+          <div className="surface p-5">
+            <p className="text-[12px] font-semibold text-white">3) Ship + maintain</p>
+            <p className="mt-2 text-[13px] text-muted">
+              Logging, monitoring, and maintenance pathways so the product stays healthy.
+            </p>
           </div>
         </div>
-      </section>
+      </Section>
 
-      {/* OPEN TOOLING */}
-      <section className="space-y-3">
-        <h2 className="text-[15px] font-semibold">Open tools</h2>
-        <p className="text-[13px] text-sbf-textMuted">
-          A few of the utilities I use day-to-day that also happen to be handy
-          for other developers working with Cardmarket or similar data.
-        </p>
-        <div className="mt-3 grid gap-4 md:grid-cols-3">
-          {tools.map((item) => (
-            <ToolCard key={item.name} item={item} />
-          ))}
+      {/* CONTACT (CHANGED: now uses Section for consistent transitions) */}
+      <Section
+        id="contact"
+        eyebrow="Contact"
+        title="Want to collaborate?"
+        subtitle="If you’re building something that needs to ship and keep running, we can talk through scope, timeline, and a sensible first milestone."
+      >
+        <div className="surface p-7 md:p-12">
+          <div className="accent-line" />
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            {/* <Button href="https://sixbyfive.com" variant="primary">
+              Contact via sixbyfive.com
+            </Button> */}
+
+            <Button href="https://uk.linkedin.com/company/sixbyfive" variant="secondary">
+              LinkedIn
+            </Button>
+          </div>
+
+          {/* Optional: small reassurance line (keeps it “agency” without sounding salesy) */}
+          <p className="mt-4 text-[12px] text-muted2">
+            Typical first step: a short scope call → a single milestone → ship.
+          </p>
         </div>
-      </section>
+      </Section>
     </div>
   );
 }

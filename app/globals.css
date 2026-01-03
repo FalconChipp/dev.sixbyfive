@@ -1,91 +1,142 @@
-/* app/globals.css */
-/* Tailwind v4 core import */
+/* app/globals.css
+   CLEAN BACKGROUND VERSION:
+   - No blue tint
+   - No section wash/vignette
+   - No global radial glows (removes banding / “shader” look)
+   - Background is intentionally boring; components carry the polish
+*/
+
 @import "tailwindcss";
 
-/* ==============================
-   SixByFive Dev Theme (Tailwind v4 @theme)
-   ============================== */
-@theme {
-  /* Brand surfaces */
-  --color-sbf-bg: #050814;
-  --color-sbf-bgElevated: #0d1322;
-  --color-sbf-bgSoft: #10182a;
-  --color-sbf-border: #1b243b;
+/* ---------------- Design tokens ---------------- */
+:root {
+  --bg: #070A12;
+  --bg2: #05070d;
 
-  /* Text */
-  --color-sbf-text: #f8fafc;
-  --color-sbf-textMuted: #94a3b8;
+  --text: #e7eaf3;
+  --muted: rgba(231, 234, 243, 0.72);
+  --muted2: rgba(231, 234, 243, 0.52);
 
-  /* Accents */
-  --color-sbf-accent: #2963ff;       /* main blue */
-  --color-sbf-accentLight: #548dff;  /* lighter blue */
-  --color-sbf-accentSoft: #a5bfff;   /* soft glow */
+  --surface: rgba(255, 255, 255, 0.045);
+  --border: rgba(255, 255, 255, 0.10);
+  --border2: rgba(255, 255, 255, 0.18);
 
-  /* Utility colours */
-  --color-sbf-chip: #020617;
-  --color-sbf-chipBorder: #1f2937;
+  --accent: #2963ff;
+  --accent2: #548dff;
 
-  /* Typography */
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
+  --radius: 18px;
+  --shadow: 0 16px 60px rgba(0, 0, 0, 0.55);
 }
-
-/* ==============================
-   Global base styles
-   ============================== */
 
 html,
 body {
-  margin: 0;
-  padding: 0;
-  background-color: var(--color-sbf-bg);
-  color: var(--color-sbf-text);
-  font-family: var(--font-sans);
+  height: 100%;
 }
 
-::selection {
-  background-color: rgba(41, 99, 255, 0.3);
+body {
+  color: var(--text);
+
+  /* CHANGED: simple, clean base only (no radials = no banding) */
+  background-color: var(--bg);
+  
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* ==============================
-   Helper classes (no Tailwind @apply)
-   ============================== */
-
-/* Subtle grid background for hero section */
-.hero-grid {
+/* ---------------- Optional subtle noise ---------------- */
+/* If you still see any “texture weirdness”, set opacity to 0 or remove this block. */
+.bg-noise {
   position: relative;
-  overflow: hidden;
 }
-
-.hero-grid::before {
+.bg-noise::before {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(
-    circle at 1px 1px,
-    rgba(148, 163, 184, 0.14) 1px,
-    transparent 0
-  );
-  background-size: 26px 26px;
-  opacity: 0.25;
   pointer-events: none;
+
+  /* CHANGED: much lower opacity to avoid visible patterning */
+  opacity: 0.025;
+
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-position: center;
+  
+  mix-blend-mode: overlay;
 }
 
-/* Soft accent glow behind hero heading */
-.hero-glow {
+/* ---------------- Card / panel surface ---------------- */
+.surface {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+
+  /* OPTIONAL: blur can sometimes create artifacts on some GPUs.
+     If you see weird banding, comment this line out. */
+  backdrop-filter: blur(10px);
+
+  box-shadow: var(--shadow);
+}
+
+.surface:hover {
+  border-color: var(--border2);
+}
+
+/* ---------------- Typography helpers ---------------- */
+.text-muted {
+  color: var(--muted);
+}
+.text-muted2 {
+  color: var(--muted2);
+}
+
+/* ---------------- Accent line ---------------- */
+.accent-line {
+  height: 2px;
+  width: 44px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+}
+
+/* ---------------- Section wrapper ---------------- */
+/* CHANGED: sections are plain. No ::before overlays at all. */
+.section {
+  position: relative;
+}
+.section::before {
+  content: none !important;
+  background: none !important;
+  opacity: 0 !important;
+}
+
+/* ---------------- Section divider ---------------- */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.12),
+    transparent
+  );
+  margin: 0;
+}
+
+/* ---------------- OPTIONAL: local accent glow ---------------- */
+/* Only use this on the hero (or one featured card). */
+.local-glow {
+  position: relative;
+}
+.local-glow::after {
+  content: "";
   position: absolute;
-  inset: -120px;
+  inset: -20px;
+  pointer-events: none;
   background: radial-gradient(
-    circle at top left,
-    rgba(84, 141, 255, 0.27),
+    closest-side at 35% 35%,
+    rgba(41, 99, 255, 0.18),
     transparent 60%
   );
-  opacity: 0.8;
-  pointer-events: none;
-}
-
-/* Keep content above hero-grid overlays */
-.hero-content {
-  position: relative;
-  z-index: 1;
+  filter: blur(12px);
+  opacity: 0.55;
+  z-index: -1;
 }
