@@ -260,9 +260,9 @@ export default function Header() {
             )}
           </div>
 
-          <Button href="#contact" variant="primary" className="ml-2">
+          {/* <Button href="#contact" variant="primary" className="ml-2">
             Contact
-          </Button>
+          </Button> */}
         </nav>
 
         {/* MOBILE MENU BUTTON */}
