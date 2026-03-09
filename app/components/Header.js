@@ -18,6 +18,7 @@ import Button from "./ui/Button";
 const toolLinks = [
   { href: "/tools/bulk-edit", label: "Bulk Edit UI", external: false },
   { href: "/tools/cardmarket-exporter", label: "Cardmarket Exporter", external: false },
+  { href: "/tools/tcgplayer-exporter", label: "TCGPlayer Exporter", external: false },
 ];
 
 const navLinks = [

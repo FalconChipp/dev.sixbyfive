@@ -72,6 +72,18 @@ const tools = [
     ],
     // cta: { label: "Contact →", href: "#contact" }
   },
+  {
+    badge: "Extraction",
+    title: "TCGPlayer product ID exporter",
+    desc:
+      "An API-powered tool that fetches all TCGPlayer productIds for a Pokémon set — including variant patterns (Poké Ball, Energy Symbol) and printing subtypes (Normal, Holofoil, Reverse Holo).",
+    bullets: [
+      "Fetches from TCGCSV (free TCGPlayer API mirror)",
+      "Shows every productId per card + variant pattern",
+      "Exports JSON compatible with the Bulk Edit UI",
+    ],
+    cta: { label: "Open TCGPlayer exporter →", href: "/tools/tcgplayer-exporter" },
+  },
 ];
 
 export default function Tooling() {
