@@ -1,8 +1,20 @@
 // app/tools/bulk-edit/BulkEditClient.js
-// MULTI-SOURCE VARIANT EDITOR v11
-// UPDATED (2026-03-09)
+// MULTI-SOURCE VARIANT EDITOR v14
+// UPDATED (2026-03-11)
 //
 // CHANGES
+// - FIX: Patterned products (Poke Ball / Master Ball Pattern) are now always reverse|foil.
+//        TCGPlayer incorrectly labels all of them as Holofoil in Black Bolt / White Flare —
+//        their printings are ignored entirely and they always map to reverse|foil.
+// - FIX: isHoloRarity() guard added — Holofoil printings on base products are only trusted
+//        when the card is actually a holo rare. Commons/Uncommons with a bogus Holofoil
+//        entry (e.g. WHT-011 Tepig, WHT-021 Oshawott) no longer generate a fake holo|| row.
+// - FIX: Bump APP_STORE_KEY to v6 to clear stale localStorage overrides causing wrong CM IDs
+//        to persist on cards like WHT-001 where old autofill put 836494 into an unknown row
+//        instead of holo|masterball.
+// - FIX: "Preserve manual rows" pass now only preserves rows with at least one manually-set ID.
+//        Auto-generated rows from a previous stale autofill no longer block fresh TCG/CM
+//        assignment, preventing wrong IDs from being locked in on re-autofill.
 // - FIX: Stop inferring "team-rocket" foil from base card names like "Team Rocket's Meowth".
 // - FIX: Resolve variants canonically before assigning IDs, instead of relying on row order.
 // - FIX: Sanitize broken Cardmarket variant labels before using them.
@@ -17,7 +29,10 @@
 // - FIX: Unresolved extra Cardmarket-only additionals are now preserved as explicit UNKNOWN rows instead of being forced into an incorrect variant.
 // - FIX: Leaked non-Cardmarket IDs are filtered out of cardmarketProducts during ingest.
 // - FIX: Base-locked rows are now derived from the actual base TCGPlayer product keys.
-// - CHANGED: Holo/normal rows are always ordered before reverse rows in UI output/code generation.
+// - FIX: Patterned TCGPlayer products now respect their actual printings instead of always becoming reverse rows.
+// - FIX: Pokeball now sorts before Masterball during both fallback CM assignment and generated output.
+// - CHANGED: Output ordering now keeps base rows first: normal, reverse, holo, then foil-pattern rows.
+// - ADDED: Foil rank helpers for stable patterned ordering.
 // - ADDED: "unknown" type / foil support for unresolved rows.
 // - ADDED: Hidden marker-based unknown row keys so multiple unresolved additionals can coexist.
 // - ADDED: Unknown row labels in the editor and generated code output.
@@ -31,7 +46,7 @@ import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Section from "../../components/ui/Section";
 
-const APP_STORE_KEY = "sbf_variant_editor_overrides_v4";
+const APP_STORE_KEY = "sbf_variant_editor_overrides_v7";
 const TYPE_OPTIONS = ["normal", "reverse", "holo", "unknown"];
 const FOIL_OPTIONS = [
   "",
@@ -104,22 +119,22 @@ const VALID_FOILS = new Set([
 ]);
 
 const SUFFIX_TO_FOIL = [
-  { pattern: /^poke\s*ball$/i, foil: "pokeball" },
-  { pattern: /^poké\s*ball$/i, foil: "pokeball" },
-  { pattern: /^master\s*ball$/i, foil: "masterball" },
-  { pattern: /^love\s*ball$/i, foil: "loveball" },
-  { pattern: /^friend\s*ball$/i, foil: "friendball" },
-  { pattern: /^quick\s*ball$/i, foil: "quickball" },
+  { pattern: /^poke\s*ball(\s+pattern)?$/i, foil: "pokeball" },
+  { pattern: /^poké\s*ball(\s+pattern)?$/i, foil: "pokeball" },
+  { pattern: /^master\s*ball(\s+pattern)?$/i, foil: "masterball" },
+  { pattern: /^love\s*ball(\s+pattern)?$/i, foil: "loveball" },
+  { pattern: /^friend\s*ball(\s+pattern)?$/i, foil: "friendball" },
+  { pattern: /^quick\s*ball(\s+pattern)?$/i, foil: "quickball" },
   { pattern: /^team[\s-]*rocket$/i, foil: "team-rocket" },
-  { pattern: /^dusk\s*ball$/i, foil: "duskball" },
+  { pattern: /^dusk\s*ball(\s+pattern)?$/i, foil: "duskball" },
   { pattern: /^energy\s*symbol\s*pattern$/i, foil: "energy" },
   { pattern: /^energy$/i, foil: "energy" },
 ];
 
-function extractTrailingParenLabel(name) {
+function extractParenLabels(name) {
   const n = String(name || "").trim();
-  const match = n.match(/\(([^()]+)\)\s*$/);
-  return match ? match[1].trim() : "";
+  const matches = [...n.matchAll(/\(([^()]+)\)/g)];
+  return matches.map((m) => String(m?.[1] || "").trim()).filter(Boolean);
 }
 
 function inferFoilFromSuffixLabel(label) {
@@ -132,13 +147,79 @@ function inferFoilFromSuffixLabel(label) {
 }
 
 function inferFoilFromTCGPlayerName(name) {
-  return inferFoilFromSuffixLabel(extractTrailingParenLabel(name));
+  const labels = extractParenLabels(name);
+
+  for (const label of labels) {
+    const foil = inferFoilFromSuffixLabel(label);
+    if (foil) return foil;
+  }
+
+  return "";
+}
+
+// Stable foil ordering for JSON/source-driven patterned variants.
+// Important for cases like Poké Ball -> Master Ball.
+function getFoilSortRank(foil) {
+  const value = String(foil || "").trim().toLowerCase();
+
+  if (!value) return 0;
+  if (value === "pokeball") return 10;
+  if (value === "masterball") return 11;
+  if (value === "loveball") return 12;
+  if (value === "friendball") return 13;
+  if (value === "quickball") return 14;
+  if (value === "team-rocket") return 15;
+  if (value === "duskball") return 16;
+  if (value === "energy") return 17;
+  if (value === "unknown") return 999;
+
+  return 100;
+}
+
+function compareFoils(a, b) {
+  const aFoil = String(a || "").trim().toLowerCase();
+  const bFoil = String(b || "").trim().toLowerCase();
+
+  const rankDiff = getFoilSortRank(aFoil) - getFoilSortRank(bFoil);
+  if (rankDiff !== 0) return rankDiff;
+
+  return aFoil.localeCompare(bFoil);
+}
+
+function getVariantSortRank(type, foil) {
+  const t = String(type || "").trim().toLowerCase();
+  const f = String(foil || "").trim().toLowerCase();
+
+  // Base rows first, then explicit holo bases, then foil rows, then unknown.
+  if (t === "normal" && !f) return 0;
+  if (t === "reverse" && !f) return 1;
+  if (t === "holo" && !f) return 2;
+  if (t === "holo" && !!f) return 3;
+  if (t === "reverse" && !!f) return 4;
+  if (t === "normal" && !!f) return 5;
+  if (t === "unknown") return 999;
+
+  return 100;
+}
+
+function compareVariantKeys(keyA, keyB) {
+  const a = parseVariantKey(keyA);
+  const b = parseVariantKey(keyB);
+
+  const rankDiff = getVariantSortRank(a.type, a.foil) - getVariantSortRank(b.type, b.foil);
+  if (rankDiff !== 0) return rankDiff;
+
+  const foilDiff = compareFoils(a.foil, b.foil);
+  if (foilDiff !== 0) return foilDiff;
+
+  if (a.type !== b.type) return a.type.localeCompare(b.type);
+  return a.stamp.localeCompare(b.stamp);
 }
 
 function sanitizeCardmarketVariantLabel(product) {
   const rawLabel = String(product?.variantLabel || "").trim();
   const name = String(product?.name || "");
-  const suffixFoil = inferFoilFromSuffixLabel(extractTrailingParenLabel(name));
+  const suffixFoil = inferFoilFromTCGPlayerName(name);
 
   if (suffixFoil) return suffixFoil;
 
@@ -149,19 +230,46 @@ function sanitizeCardmarketVariantLabel(product) {
   return "";
 }
 
+function isHoloRarity(rarity) {
+  // Only trust Holofoil printings from TCGPlayer for cards that are actually holo rares.
+  // Commons and Uncommons in sets like Black Bolt / White Flare sometimes have a bogus
+  // Holofoil entry on their base product (e.g. Tepig, Oshawott in WHT) due to TCGPlayer
+  // data errors. Filtering by rarity prevents fake holo|| rows being created for them.
+  const r = String(rarity || "").trim().toLowerCase();
+  return (
+    r === "rare" ||
+    r === "rare holo" ||
+    r === "double rare" ||
+    r === "ultra rare" ||
+    r === "secret rare" ||
+    r === "special illustration rare" ||
+    r === "illustration rare" ||
+    r === "hyper rare" ||
+    r.includes("rare")
+  );
+}
+
 function getTcgplayerVariantKeys(product) {
   const foil = inferFoilFromTCGPlayerName(product?.name);
   const printings = Array.isArray(product?.printings) ? product.printings : [];
 
+  // Patterned products (Poke Ball Pattern, Master Ball Pattern, etc.) are always
+  // reverse holofoil variants in Black Bolt / White Flare and similar sets.
+  // TCGPlayer incorrectly labels all of them as "Holofoil" — ignore their printings
+  // entirely and always map to reverse|foil.
   if (foil) {
     return [makeVariantKey("reverse", foil, "")];
   }
 
   const hasNormal = printings.some((p) => /^normal$/i.test(String(p)));
   const hasReverse = printings.some((p) => /reverse/i.test(String(p)));
-  const hasHolo = printings.some(
-    (p) => /holo/i.test(String(p)) && !/reverse/i.test(String(p))
-  );
+
+  // Only create a holo|| row if the card is actually a holo rare.
+  // TCGPlayer sometimes lists Holofoil on base products for commons/uncommons in
+  // special sets — this is a data error and should be ignored.
+  const hasHolo =
+    isHoloRarity(product?.rarity) &&
+    printings.some((p) => /holo/i.test(String(p)) && !/reverse/i.test(String(p)));
 
   const keys = [];
 
@@ -511,12 +619,6 @@ function ensureAutofill(cardsById, overrides, cardId) {
   if (baseLockedTypes.has("holo")) upsertRow(makeVariantKey("holo", "", ""));
   if (baseLockedTypes.has("reverse")) upsertRow(makeVariantKey("reverse", "", ""));
 
-  // Preserve manual rows first.
-  for (const row of existingRows) {
-    const key = makeVariantKey(row.type, row.foil || "", row.stamp || "");
-    upsertRow(key, row);
-  }
-
   // TCGPlayer can create multiple rows from one product.
   for (const tp of card.tcgplayerProducts || []) {
     const keys = getTcgplayerVariantKeys(tp);
@@ -533,6 +635,9 @@ function ensureAutofill(cardsById, overrides, cardId) {
   }
 
   // First pass: explicit Cardmarket-labelled additionals.
+  // Pattern-labelled CM additionals prefer matching known patterned rows.
+  // Default to holo-pattern row first because White Flare / Black Bolt style
+  // pattern products are holo-pattern additionals in the JSON.
   const unresolvedCmAdditionals = [];
 
   for (const cm of card.cardmarketProducts || []) {
@@ -542,10 +647,17 @@ function ensureAutofill(cardsById, overrides, cardId) {
     if (isBase) continue;
 
     if (foil) {
-      const key = makeVariantKey("reverse", foil, "");
-      const current = byKey.get(key) || makeVariantRowFromKey(key);
+      const preferredKeys = [
+        makeVariantKey("holo", foil, ""),
+        makeVariantKey("reverse", foil, ""),
+        makeVariantKey("normal", foil, ""),
+      ];
+
+      const targetKey = preferredKeys.find((key) => byKey.has(key)) || preferredKeys[0];
+      const current = byKey.get(targetKey) || makeVariantRowFromKey(targetKey);
+
       if (!safeNum(current.cardmarket)) {
-        upsertRow(key, {
+        upsertRow(targetKey, {
           ...current,
           cardmarket: String(cm.productId),
         });
@@ -559,7 +671,8 @@ function ensureAutofill(cardsById, overrides, cardId) {
   }
 
   // Second pass: unresolved CM additionals.
-  // Prefer existing non-base-locked rows, then create UNKNOWN rows.
+  // Prefer known non-base-locked patterned rows in stable foil order, then other
+  // non-base-locked rows, then create UNKNOWN rows.
   const assignableRows = [...byKey.entries()]
     .filter(
       ([, row]) =>
@@ -569,25 +682,14 @@ function ensureAutofill(cardsById, overrides, cardId) {
     )
     .map(([key, row]) => ({ key, row }))
     .sort((a, b) => {
-      const aRank =
-        a.row.type === "reverse" && a.row.foil
-          ? 0
-          : a.row.type === "reverse"
-            ? 1
-            : a.row.type === "unknown"
-              ? 3
-              : 2;
+      const aRank = getVariantSortRank(a.row.type, a.row.foil);
+      const bRank = getVariantSortRank(b.row.type, b.row.foil);
+      if (aRank !== bRank) return aRank - bRank;
 
-      const bRank =
-        b.row.type === "reverse" && b.row.foil
-          ? 0
-          : b.row.type === "reverse"
-            ? 1
-            : b.row.type === "unknown"
-              ? 3
-              : 2;
+      const foilDiff = compareFoils(a.row.foil, b.row.foil);
+      if (foilDiff !== 0) return foilDiff;
 
-      return aRank - bRank;
+      return a.key.localeCompare(b.key);
     });
 
   const usedAssignableKeys = new Set();
@@ -623,46 +725,24 @@ function ensureAutofill(cardsById, overrides, cardId) {
     });
   }
 
+  // Preserve user-edited rows from a previous run — but ONLY after all autofill
+  // assignment is complete. This means stale auto-assigned rows (pokeball, masterball,
+  // normal, reverse, holo) are discarded and re-derived cleanly. Only rows where the
+  // user explicitly set an ID on a genuine unknown (type === "unknown", no synthetic
+  // stamp) are restored — these are IDs the user typed in by hand that autofill
+  // can never resolve on its own.
+  for (const row of existingRows) {
+    if (row.type !== "unknown") continue;
+    const stamp = String(row.stamp || "");
+    if (/^(cm|tcg)-only-/.test(stamp)) continue;
+    const hasManualId = safeNum(row.cardmarket) || safeNum(row.tcgplayer);
+    if (!hasManualId) continue;
+    const key = makeVariantKey(row.type, row.foil || "", stamp);
+    upsertRow(key, row);
+  }
+
   const rows = [...byKey.entries()]
-    .sort(([keyA], [keyB]) => {
-      const a = parseVariantKey(keyA);
-      const b = parseVariantKey(keyB);
-
-      // CHANGED:
-      // - Normal/Holo always first
-      // - Reverse after those
-      // - Unknown after known variants
-      const aRank =
-        a.type === "normal" && !a.foil
-          ? 0
-          : a.type === "holo" && !a.foil
-            ? 1
-            : a.type === "reverse" && !a.foil
-              ? 2
-              : a.type === "reverse" && !!a.foil
-                ? 3
-                : a.type === "unknown"
-                  ? 4
-                  : 5;
-
-      const bRank =
-        b.type === "normal" && !b.foil
-          ? 0
-          : b.type === "holo" && !b.foil
-            ? 1
-            : b.type === "reverse" && !b.foil
-              ? 2
-              : b.type === "reverse" && !!b.foil
-                ? 3
-                : b.type === "unknown"
-                  ? 4
-                  : 5;
-
-      if (aRank !== bRank) return aRank - bRank;
-      if (a.type !== b.type) return a.type.localeCompare(b.type);
-      if (a.foil !== b.foil) return a.foil.localeCompare(b.foil);
-      return a.stamp.localeCompare(b.stamp);
-    })
+    .sort(([keyA], [keyB]) => compareVariantKeys(keyA, keyB))
     .map(([, row]) => row);
 
   ov.variants = rows;
@@ -687,23 +767,16 @@ function generateCodeBlock(card, override) {
     tcgplayer: clampNonEmptyStr(v.tcgplayer) || "",
   }));
 
-  const ordered = [
-    ...variants.filter((v) => v.type === "normal" && !v.foil),
-    ...variants.filter((v) => v.type === "holo" && !v.foil),
-    ...variants.filter((v) => v.type === "reverse" && !v.foil),
-    ...variants.filter((v) => v.type === "reverse" && !!v.foil),
-    ...variants.filter((v) => v.type === "unknown"),
-    ...variants.filter(
-      (v) =>
-        !(
-          (v.type === "normal" && !v.foil) ||
-          (v.type === "holo" && !v.foil) ||
-          (v.type === "reverse" && !v.foil) ||
-          (v.type === "reverse" && !!v.foil) ||
-          v.type === "unknown"
-        )
-    ),
-  ];
+  const ordered = [...variants].sort((a, b) => {
+    const rankDiff = getVariantSortRank(a.type, a.foil) - getVariantSortRank(b.type, b.foil);
+    if (rankDiff !== 0) return rankDiff;
+
+    const foilDiff = compareFoils(a.foil, b.foil);
+    if (foilDiff !== 0) return foilDiff;
+
+    if (a.type !== b.type) return a.type.localeCompare(b.type);
+    return String(a.stamp || "").localeCompare(String(b.stamp || ""));
+  });
 
   const lines = ["variants: ["];
   for (const v of ordered) {

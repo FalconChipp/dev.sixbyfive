@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Cardmarket Set Merge Exporter (Any Set + Pagination + Reliable Export)
 // @namespace    sixbyfive-tools
-// @version      3.3.0
-// @description  Collects Cardmarket productIds from any Pokémon Singles set pages (base + additionals/variants) across pagination and exports a merged map keyed by canonical SETCODE-NNN. Merges across different slugs by deriving a shared group key from row set codes. Export uses a stored slug->groupKey index so it cannot "forget" where you collected.
+// @version      3.5.0
+// @description  Collects Cardmarket productIds + variant names from Pokemon Singles set pages. Supports both the new grid layout (2025+) and legacy productRow layout. Merges across slugs by derived groupKey.
 // @match        https://www.cardmarket.com/*/Pokemon/Products/Singles/*
 // @match        https://www.cardmarket.com/*/Pokemon/Products/Singles/*/*
 // @grant        GM_setClipboard
@@ -116,7 +116,8 @@
         <div style="font-size: 12px; color: #9ca3af; margin-bottom: 10px; line-height: 1.35;">
           Collect base + additionals pages across pagination (<b>site=</b>).<br/>
           Merge key is derived from row set codes (<b>XPRE</b> merges into <b>PRE</b>).<br/>
-          <b>Export is reliable</b>: it uses a stored <code>setSlug → groupKey</code> index.
+          <b>Export is reliable</b>: it uses a stored <code>setSlug → groupKey</code> index.<br/>
+          <b>Variant names included</b>: export now stores Cardmarket product names and inferred labels.
         </div>
 
         <div id="sbf-detected" style="
@@ -317,7 +318,6 @@
     const u = new URL(location.href);
     const current = getPageParam();
 
-    // Prefer Cardmarket "site"
     if (u.searchParams.has("site") || !u.searchParams.has("page")) {
       u.searchParams.set("site", String(current + 1));
       u.searchParams.delete("page");
@@ -326,6 +326,37 @@
 
     u.searchParams.set("page", String(current + 1));
     return u.toString();
+  }
+
+  function cleanDisplayName(displayText) {
+    const text = String(displayText || "").trim();
+    if (!text) return "";
+
+    const withoutCode = text.replace(/\s*\(([a-zA-Z0-9]+)\s+([0-9]{1,4}[a-zA-Z]?)\).*/i, "").trim();
+
+    return withoutCode
+      .replace(/\s*From\s+.+$/i, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function inferVariantLabelFromName(name) {
+    const n = String(name || "").toLowerCase();
+
+    if (n.includes("master ball") || n.includes("masterball")) return "masterball";
+    if (n.includes("poke ball") || n.includes("poké ball") || n.includes("pokeball")) return "pokeball";
+    if (n.includes("love ball") || n.includes("loveball")) return "loveball";
+    if (n.includes("friend ball") || n.includes("friendball")) return "friendball";
+    if (n.includes("quick ball") || n.includes("quickball")) return "quickball";
+    if (n.includes("dusk ball") || n.includes("duskball")) return "duskball";
+    if (n.includes("great ball") || n.includes("greatball")) return "greatball";
+    if (n.includes("ultra ball") || n.includes("ultraball")) return "ultraball";
+    if (n.includes("energy symbol")) return "energy";
+    if (n.includes("team rocket") || n.includes("team-rocket")) return "team-rocket";
+    if (n.includes("reverse holo") || n.includes("reverse-holo")) return "reverse-holo";
+    if (n.includes("holo")) return "holo";
+
+    return "";
   }
 
   // ===========================================================================
@@ -345,19 +376,41 @@
   }
 
   // ===========================================================================
-  // Extraction logic (searchMode=v2 rows)
+  // Extraction logic
   // ===========================================================================
   const PRODUCT_ROW_ID_RE = /^productRow(\d+)$/;
+  const IMG_PRODUCT_ID_RE = /(\d{4,})\/\d+\.(?:jpg|png|webp)/;
 
   function getProductRows() {
-    // FIXED: loosened selector (Cardmarket doesn’t always keep ".row.g-0")
-    return Array.from(document.querySelectorAll('div[id^="productRow"]'));
+    const gridCards = Array.from(
+      document.querySelectorAll('.col-12.col-sm-6.col-md-4.col-lg-3')
+    ).filter((el) => el.querySelector('a[href*="/Pokemon/Products/Singles/"]'));
+
+    if (gridCards.length > 0) return gridCards;
+
+    const legacyRows = Array.from(document.querySelectorAll('div[id^="productRow"]'));
+    if (legacyRows.length > 0) return legacyRows;
+
+    const links = Array.from(document.querySelectorAll('a[href*="/Pokemon/Products/Singles/"]'));
+    const parents = links
+      .map((a) => a.closest("div"))
+      .filter(Boolean);
+    return parents;
   }
 
   function extractProductId(rowEl) {
+    const img = rowEl.querySelector("img");
+    if (img) {
+      const src = img.src || img.getAttribute("data-src") || img.getAttribute("srcset") || "";
+      const m = src.match(IMG_PRODUCT_ID_RE);
+      if (m) return Number(m[1]);
+    }
+
     const idAttr = rowEl.getAttribute("id") || "";
-    const m = idAttr.match(PRODUCT_ROW_ID_RE);
-    return m ? Number(m[1]) : null;
+    const legacyMatch = idAttr.match(PRODUCT_ROW_ID_RE);
+    if (legacyMatch) return Number(legacyMatch[1]);
+
+    return null;
   }
 
   function extractDisplayText(rowEl) {
@@ -409,12 +462,25 @@
   }
 
   function resolveGroupKey(setSlug) {
-    // If we’ve ever collected this slug before, export/collect uses that remembered groupKey
-    const remembered = getRememberedGroupForSlug(setSlug);
-    if (remembered) return remembered;
-
-    // Otherwise derive from rows
     const derived = getGroupKeyFromPage(setSlug);
+
+    if (derived && !derived.startsWith("SLUG__")) {
+      return derived;
+    }
+
+    const remembered = getRememberedGroupForSlug(setSlug);
+    if (remembered && !remembered.startsWith("SLUG__")) {
+      return remembered;
+    }
+
+    const index = loadGroupIndex();
+    for (const [slug, entry] of Object.entries(index)) {
+      if (!entry?.groupKey || entry.groupKey.startsWith("SLUG__")) continue;
+      if (setSlug.startsWith(slug) || slug.startsWith(setSlug)) {
+        return entry.groupKey;
+      }
+    }
+
     return derived;
   }
 
@@ -522,7 +588,10 @@
       const canonicalCardId = rawCardId ? toCanonicalCardId(rawCardId) : null;
       if (canonicalCardId) page.stats.rowsWithCanonicalCardId++;
 
-      debugRows.push({ productId, display, rawCardId, canonicalCardId });
+      const cleanName = cleanDisplayName(display);
+      const variantLabel = inferVariantLabelFromName(cleanName);
+
+      debugRows.push({ productId, display, cleanName, variantLabel, rawCardId, canonicalCardId });
 
       if (!productId || !rawCardId || !canonicalCardId) continue;
 
@@ -531,6 +600,7 @@
         rawCardIds: [],
         ids: { base: [], additional: [] },
         sources: [],
+        cardmarketProducts: [],
       };
 
       const entry = store.entries[canonicalCardId];
@@ -547,6 +617,20 @@
         groupKey,
         setName: pageName,
         url: location.href,
+        name: cleanName,
+        variantLabel,
+      });
+
+      entry.cardmarketProducts.push({
+        productId,
+        name: cleanName,
+        variantLabel,
+        bucket,
+        rawCardId,
+        canonicalCardId,
+        setSlug,
+        setName: pageName,
+        url: location.href,
       });
 
       page.stats.rowsPaired++;
@@ -558,11 +642,19 @@
       e.ids.base = uniqSorted(e.ids.base);
       e.ids.additional = uniqSorted(e.ids.additional);
 
-      const seen = new Set();
+      const seenSources = new Set();
       e.sources = e.sources.filter((s) => {
         const key = `${s.productId}|${s.bucket}|${s.url}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
+        if (seenSources.has(key)) return false;
+        seenSources.add(key);
+        return true;
+      });
+
+      const seenProducts = new Set();
+      e.cardmarketProducts = (e.cardmarketProducts || []).filter((p) => {
+        const key = `${p.productId}|${p.bucket}|${p.url}`;
+        if (seenProducts.has(key)) return false;
+        seenProducts.add(key);
         return true;
       });
     }
@@ -591,7 +683,7 @@
 
   function buildExportPayload() {
     const setSlug = getSetSlugFromUrl();
-    const groupKey = resolveGroupKey(setSlug); 
+    const groupKey = resolveGroupKey(setSlug);
     const store = loadStore(groupKey);
 
     const out = {};
@@ -603,6 +695,7 @@
         cardId: e.cardId,
         ids: { base: e.ids.base, additional: e.ids.additional },
         rawCardIds: e.rawCardIds,
+        cardmarketProducts: e.cardmarketProducts || [],
         sources: e.sources,
       };
     }
@@ -622,7 +715,7 @@
         tool: "sbf-cm-set-merge-exporter",
         exportedAt: new Date().toISOString(),
         groupKey,
-        note: "Keyed by canonical SETCODE-NNN. Cross-slug merge enabled by storing per derived groupKey (canonical set code). Export uses stored setSlug→groupKey index to avoid empty exports.",
+        note: "Keyed by canonical SETCODE-NNN. Cross-slug merge enabled by storing per derived groupKey (canonical set code). Export uses stored setSlug→groupKey index to avoid empty exports. Cardmarket product names and inferred variant labels are included in cardmarketProducts.",
       },
       pages: store.pages,
       stats: { mergedKeys: keys.length, baseOnly, addOnly, both },
@@ -684,6 +777,103 @@
     setDebug({ reset: true, setSlug, groupKey });
     renderDetected();
   });
+
+  // ===========================================================================
+  // Migration: merge any SLUG__* stores into their correct group
+  // ===========================================================================
+  (function migrateSlugStores() {
+    try {
+      const index = loadGroupIndex();
+      const slugEntries = Object.entries(index).filter(([, v]) => v?.groupKey?.startsWith("SLUG__"));
+      if (!slugEntries.length) return;
+
+      for (const [slug, entry] of slugEntries) {
+        const staleKey = entry.groupKey;
+        const staleStore = loadStore(staleKey);
+        if (!staleStore.pages.length && !Object.keys(staleStore.entries).length) continue;
+
+        let realKey = null;
+        for (const [otherSlug, otherEntry] of Object.entries(index)) {
+          if (otherEntry?.groupKey?.startsWith("SLUG__")) continue;
+          if (slug.startsWith(otherSlug) || otherSlug.startsWith(slug)) {
+            realKey = otherEntry.groupKey;
+            break;
+          }
+        }
+        if (!realKey) continue;
+
+        const realStore = loadStore(realKey);
+        for (const [cardId, staleEntry] of Object.entries(staleStore.entries)) {
+          realStore.entries[cardId] ??= {
+            cardId,
+            rawCardIds: [],
+            ids: { base: [], additional: [] },
+            sources: [],
+            cardmarketProducts: [],
+          };
+          const target = realStore.entries[cardId];
+          target.rawCardIds = Array.from(new Set([...target.rawCardIds, ...(staleEntry.rawCardIds || [])])).sort();
+          target.ids.base = uniqSorted([...target.ids.base, ...(staleEntry.ids?.base || [])]);
+          target.ids.additional = uniqSorted([...target.ids.additional, ...(staleEntry.ids?.additional || [])]);
+          target.sources = [...target.sources, ...(staleEntry.sources || [])];
+          target.cardmarketProducts = [
+            ...(target.cardmarketProducts || []),
+            ...((staleEntry.cardmarketProducts || []).length
+              ? staleEntry.cardmarketProducts
+              : (staleEntry.sources || [])
+                  .filter((s) => Number.isFinite(Number(s?.productId)))
+                  .map((s) => ({
+                    productId: Number(s.productId),
+                    name: s.name || "",
+                    variantLabel: s.variantLabel || "",
+                    bucket: s.bucket || "",
+                    rawCardId: s.rawCardId || "",
+                    canonicalCardId: cardId,
+                    setSlug: s.setSlug || "",
+                    setName: s.setName || "",
+                    url: s.url || "",
+                  }))),
+          ];
+        }
+
+        for (const p of staleStore.pages) {
+          if (!realStore.pages.some((rp) => rp.pageId === p.pageId)) {
+            realStore.pages.push(p);
+          }
+        }
+        Object.assign(realStore.seenPageIds, staleStore.seenPageIds);
+
+        for (const cardId of Object.keys(realStore.entries)) {
+          const e = realStore.entries[cardId];
+          const seenSources = new Set();
+          e.sources = (e.sources || []).filter((s) => {
+            const key = `${s.productId}|${s.bucket}|${s.url}`;
+            if (seenSources.has(key)) return false;
+            seenSources.add(key);
+            return true;
+          });
+
+          const seenProducts = new Set();
+          e.cardmarketProducts = (e.cardmarketProducts || []).filter((p) => {
+            const key = `${p.productId}|${p.bucket}|${p.url}`;
+            if (seenProducts.has(key)) return false;
+            seenProducts.add(key);
+            return true;
+          });
+        }
+
+        saveStore(realKey, realStore);
+        clearStore(staleKey);
+
+        index[slug] = { groupKey: realKey, lastSeenAt: new Date().toISOString() };
+
+        console.log(`[SBF Exporter] Migrated SLUG__${slug} → ${realKey} (${Object.keys(staleStore.entries).length} entries)`);
+      }
+      saveGroupIndex(index);
+    } catch (e) {
+      console.warn("[SBF Exporter] Migration error:", e);
+    }
+  })();
 
   // ===========================================================================
   // Boot
