@@ -19,6 +19,7 @@ const toolLinks = [
   { href: "/tools/bulk-edit", label: "Bulk Edit UI", external: false },
   { href: "/tools/cardmarket-exporter", label: "Cardmarket Exporter", external: false },
   { href: "/tools/tcgplayer-exporter", label: "TCGPlayer Exporter", external: false },
+  { href: "/tools/image-intake", label: "TCGDex Image Intake", external: false }, 
 ];
 
 const navLinks = [
