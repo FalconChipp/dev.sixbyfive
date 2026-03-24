@@ -159,7 +159,8 @@ function ResultPanel({ result }) {
     );
   }
 
-  const totalCount = result.matchedCount + (result.symbolFile ? 1 : 0);
+  const cardCount = result.uploadedFiles?.length ?? 0;
+  const totalCount = cardCount + (result.symbolFile ? 1 : 0);
 
   return (
     <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5 space-y-4">
@@ -173,7 +174,12 @@ function ResultPanel({ result }) {
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-semibold text-emerald-300">
             {totalCount} file{totalCount !== 1 ? "s" : ""} uploaded successfully
-            {result.symbolFile && (
+            {result.symbolFile && cardCount === 0 && (
+              <span className="ml-2 text-[11px] font-normal text-emerald-400/60">
+                (symbol only)
+              </span>
+            )}
+            {result.symbolFile && cardCount > 0 && (
               <span className="ml-2 text-[11px] font-normal text-emerald-400/60">
                 (incl. set symbol)
               </span>
@@ -215,31 +221,33 @@ function ResultPanel({ result }) {
       )}
 
       {/* Card image file list */}
-      <div>
-        {result.symbolFile && (
-          <div className="text-[11px] text-white/40 mb-1.5">Card images</div>
-        )}
-        <div className="space-y-1.5">
-          {(result.uploadedFiles || []).map((f) => (
-            <div
-              key={f.cardNumber}
-              className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2"
-            >
-              <StatusIcon status="success" />
-              <span className="text-[12px] font-mono text-white/80 min-w-[3.5rem]">{f.cardNumber}</span>
-              <span className="text-[12px] text-white/50 flex-1 truncate">{f.filename}</span>
-              <span className="text-[10px] font-mono text-white/25 hidden md:block truncate max-w-[180px]">{f.objectKey}</span>
-            </div>
-          ))}
+      {cardCount > 0 && (
+        <div>
+          {result.symbolFile && (
+            <div className="text-[11px] text-white/40 mb-1.5">Card images</div>
+          )}
+          <div className="space-y-1.5">
+            {result.uploadedFiles.map((f) => (
+              <div
+                key={f.cardNumber}
+                className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+              >
+                <StatusIcon status="success" />
+                <span className="text-[12px] font-mono text-white/80 min-w-[3.5rem]">{f.cardNumber}</span>
+                <span className="text-[12px] text-white/50 flex-1 truncate">{f.filename}</span>
+                <span className="text-[10px] font-mono text-white/25 hidden md:block truncate max-w-[180px]">{f.objectKey}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
 // ─── Rules sidebar ───────────────────────────────────────────────────────────
-function RulesPanel() {
-  const rules = [
+function RulesPanel({ mode }) {
+  const cardRules = [
     "Single .zip file",
     "Files at root level — no subfolders",
     "Filenames must contain a number — that number is the card number",
@@ -249,6 +257,19 @@ function RulesPanel() {
     "Card numbers must match declared numbers exactly — no extras, no missing",
     'Optionally include "symbol.png" or "logo.png" for the set logo',
   ];
+
+  const symbolRules = [
+    "Single .zip file",
+    'Files must be named "symbol.png" or "logo.png"',
+    "Formats: .png .jpg .jpeg .webp",
+    "One symbol file per zip",
+    "Leave card numbers blank for a symbol-only upload",
+  ];
+
+  const rules = mode === "symbol" ? symbolRules : cardRules;
+
+  const cardExample = `cards.zip\n├── symbol.png\n├── 001.png\n├── Blitzle-12-XY-Trainer-Kit.png\n└── Potion-21.jpg`;
+  const symbolExample = `symbols.zip\n└── symbol.png`;
 
   return (
     <div className="surface p-5 h-fit">
@@ -264,11 +285,9 @@ function RulesPanel() {
 
       <div className="mt-5 rounded-xl border border-white/10 bg-black/30 p-3">
         <div className="text-[11px] text-white/40 mb-1.5">Example zip structure</div>
-        <pre className="text-[11px] text-white/60 leading-relaxed font-mono">{`cards.zip
-├── symbol.png
-├── 001.png
-├── Blitzle-12-XY-Trainer-Kit.png
-└── Potion-21.jpg`}</pre>
+        <pre className="text-[11px] text-white/60 leading-relaxed font-mono">
+          {mode === "symbol" ? symbolExample : cardExample}
+        </pre>
       </div>
     </div>
   );
@@ -282,10 +301,11 @@ export default function ImageIntakeClient() {
   const [status, setStatus] = useState("idle"); // idle | uploading | success | error
   const [result, setResult] = useState(null);
 
+  const isSymbolOnly = cardNumbers.trim().length === 0;
+
   const canSubmit =
     status !== "uploading" &&
     setCode.trim().length > 0 &&
-    cardNumbers.trim().length > 0 &&
     zipFile !== null;
 
   const parsedNumbers = parseCardNumbersForPreview(cardNumbers);
@@ -298,7 +318,9 @@ export default function ImageIntakeClient() {
 
     const formData = new FormData();
     formData.append("setCode", setCode.trim());
-    formData.append("cardNumbers", cardNumbers.trim());
+    if (!isSymbolOnly) {
+      formData.append("cardNumbers", cardNumbers.trim());
+    }
     formData.append("zipFile", zipFile);
 
     try {
@@ -361,15 +383,21 @@ export default function ImageIntakeClient() {
 
               <div>
                 <label className="block text-[11px] text-white/55 mb-1.5">
-                  Card numbers <span className="text-white/30">(comma-separated)</span>
+                  Card numbers{" "}
+                  <span className="text-white/30">(comma-separated, leave blank for symbol only)</span>
                 </label>
                 <input
                   value={cardNumbers}
                   onChange={(e) => setCardNumbers(e.target.value)}
-                  placeholder="1, 2, 10"
+                  placeholder="1, 2, 10  —  or leave blank"
                   disabled={status === "uploading"}
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[13px] text-white font-mono placeholder:text-white/20 outline-none focus:border-white/25 transition disabled:opacity-50"
                 />
+                {isSymbolOnly && (
+                  <div className="mt-1.5 text-[11px] text-amber-400/70">
+                    Symbol-only mode — zip must contain only symbol.png / logo.png
+                  </div>
+                )}
               </div>
             </div>
 
@@ -420,7 +448,7 @@ export default function ImageIntakeClient() {
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
                   </svg>
-                  Upload images
+                  {isSymbolOnly ? "Upload symbol" : "Upload images"}
                 </>
               )}
             </button>
@@ -436,7 +464,7 @@ export default function ImageIntakeClient() {
 
             {!canSubmit && status === "idle" && (
               <span className="text-[12px] text-white/30">
-                {!setCode.trim() ? "Set code required" : !cardNumbers.trim() ? "Card numbers required" : "Zip file required"}
+                {!setCode.trim() ? "Set code required" : "Zip file required"}
               </span>
             )}
           </div>
@@ -446,7 +474,7 @@ export default function ImageIntakeClient() {
 
         {/* ── RIGHT: Rules sidebar ────────────────────────────────── */}
         <div className="md:col-span-4">
-          <RulesPanel />
+          <RulesPanel mode={isSymbolOnly ? "symbol" : "card"} />
         </div>
       </div>
     </Section>
