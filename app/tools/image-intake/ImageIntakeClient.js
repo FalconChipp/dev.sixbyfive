@@ -129,8 +129,8 @@ function DropZone({ file, onFile, disabled }) {
   );
 }
 
-// ─── Result panel ────────────────────────────────────────────────────────────
-function ResultPanel({ result }) {
+// ─── Single set result ────────────────────────────────────────────────────────
+function SingleSetResult({ result }) {
   const [copied, setCopied] = useState(false);
 
   async function copyId() {
@@ -141,29 +141,11 @@ function ResultPanel({ result }) {
     } catch { /* ignore */ }
   }
 
-  if (!result.success) {
-    return (
-      <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-5">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10">
-            <svg className="h-3.5 w-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-          <div>
-            <div className="text-[13px] font-semibold text-red-300">Upload failed</div>
-            <div className="mt-1 text-[13px] text-red-200/70">{result.error}</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const cardCount = result.uploadedFiles?.length ?? 0;
   const totalCount = cardCount + (result.symbolFile ? 1 : 0);
 
   return (
-    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5 space-y-4">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10">
@@ -175,14 +157,10 @@ function ResultPanel({ result }) {
           <div className="text-[13px] font-semibold text-emerald-300">
             {totalCount} file{totalCount !== 1 ? "s" : ""} uploaded successfully
             {result.symbolFile && cardCount === 0 && (
-              <span className="ml-2 text-[11px] font-normal text-emerald-400/60">
-                (symbol only)
-              </span>
+              <span className="ml-2 text-[11px] font-normal text-emerald-400/60">(symbol only)</span>
             )}
             {result.symbolFile && cardCount > 0 && (
-              <span className="ml-2 text-[11px] font-normal text-emerald-400/60">
-                (incl. set symbol)
-              </span>
+              <span className="ml-2 text-[11px] font-normal text-emerald-400/60">(incl. set symbol)</span>
             )}
           </div>
           <button
@@ -220,18 +198,13 @@ function ResultPanel({ result }) {
         </div>
       )}
 
-      {/* Card image file list */}
+      {/* Card images */}
       {cardCount > 0 && (
         <div>
-          {result.symbolFile && (
-            <div className="text-[11px] text-white/40 mb-1.5">Card images</div>
-          )}
+          {result.symbolFile && <div className="text-[11px] text-white/40 mb-1.5">Card images</div>}
           <div className="space-y-1.5">
             {result.uploadedFiles.map((f) => (
-              <div
-                key={f.cardNumber}
-                className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2"
-              >
+              <div key={f.cardNumber} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
                 <StatusIcon status="success" />
                 <span className="text-[12px] font-mono text-white/80 min-w-[3.5rem]">{f.cardNumber}</span>
                 <span className="text-[12px] text-white/50 flex-1 truncate">{f.filename}</span>
@@ -241,6 +214,122 @@ function ResultPanel({ result }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Multi set result ─────────────────────────────────────────────────────────
+function MultiSetResult({ data }) {
+  const [expandedSets, setExpandedSets] = useState({});
+
+  function toggleSet(setCode) {
+    setExpandedSets((prev) => ({ ...prev, [setCode]: !prev[setCode] }));
+  }
+
+  const totalFiles = data.sets.reduce((acc, s) => {
+    return acc + (s.uploadedFiles?.length ?? 0) + (s.symbolFile ? 1 : 0);
+  }, 0);
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10">
+          <svg className="h-3.5 w-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[13px] font-semibold text-emerald-300">
+            {totalFiles} file{totalFiles !== 1 ? "s" : ""} uploaded across {data.setCount} set{data.setCount !== 1 ? "s" : ""}
+          </div>
+        </div>
+      </div>
+
+      {/* Per-set breakdown */}
+      <div className="space-y-2">
+        {data.sets.map((s) => {
+          const cardCount = s.uploadedFiles?.length ?? 0;
+          const totalCount = cardCount + (s.symbolFile ? 1 : 0);
+          const isExpanded = expandedSets[s.setCode] ?? false;
+
+          return (
+            <div key={s.setCode} className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+              {/* Set header row — click to expand */}
+              <button
+                onClick={() => toggleSet(s.setCode)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.03] transition text-left"
+              >
+                <span className="text-[12px] font-mono font-semibold text-white/90 min-w-[4rem]">{s.setCode}</span>
+                <span className="text-[12px] text-white/40 flex-1">
+                  {totalCount} file{totalCount !== 1 ? "s" : ""}
+                  {s.symbolFile && cardCount === 0 && <span className="ml-1.5 text-white/25">(symbol only)</span>}
+                  {s.symbolFile && cardCount > 0 && <span className="ml-1.5 text-white/25">(incl. symbol)</span>}
+                </span>
+                <span className="text-[11px] font-mono text-white/25 hidden md:block truncate max-w-[160px]">{s.storage?.submissionPrefix}</span>
+                <svg
+                  className={`h-3.5 w-3.5 text-white/30 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Expanded file list */}
+              {isExpanded && (
+                <div className="border-t border-white/[0.06] px-3 py-2 space-y-1.5">
+                  {s.symbolFile && (
+                    <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
+                      <StatusIcon status="success" />
+                      <span className="text-[11px] font-mono text-white/60 min-w-[3.5rem]">symbol</span>
+                      <span className="text-[11px] text-white/40 flex-1 truncate">{s.symbolFile.filename}</span>
+                      <span className="text-[10px] font-mono text-white/20 hidden md:block truncate max-w-[180px]">{s.symbolFile.objectKey}</span>
+                    </div>
+                  )}
+                  {(s.uploadedFiles || []).map((f) => (
+                    <div key={f.cardNumber} className="flex items-center gap-3 rounded-lg px-2 py-1.5">
+                      <StatusIcon status="success" />
+                      <span className="text-[11px] font-mono text-white/60 min-w-[3.5rem]">{f.cardNumber}</span>
+                      <span className="text-[11px] text-white/40 flex-1 truncate">{f.filename}</span>
+                      <span className="text-[10px] font-mono text-white/20 hidden md:block truncate max-w-[180px]">{f.objectKey}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Result panel ────────────────────────────────────────────────────────────
+function ResultPanel({ result }) {
+  if (!result.success) {
+    return (
+      <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-5">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10">
+            <svg className="h-3.5 w-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <div>
+            <div className="text-[13px] font-semibold text-red-300">Upload failed</div>
+            <div className="mt-1 text-[13px] text-red-200/70">{result.error}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+      {result.multiSet
+        ? <MultiSetResult data={result} />
+        : <SingleSetResult result={result} />
+      }
     </div>
   );
 }
@@ -266,10 +355,22 @@ function RulesPanel({ mode }) {
     "Leave card numbers blank for a symbol-only upload",
   ];
 
-  const rules = mode === "symbol" ? symbolRules : cardRules;
+  const multiRules = [
+    "Single .zip file",
+    "Each set in its own folder named after the set code",
+    "Folder names must be 2–10 alphanumeric characters (e.g. SV2A)",
+    "Card numbers auto-resolved from filenames — no need to declare them",
+    'Optionally include "symbol.png" or "logo.png" inside each set folder',
+    "Formats: .png .jpg .jpeg .webp",
+  ];
+
+  const rules = mode === "symbol" ? symbolRules : mode === "multi" ? multiRules : cardRules;
 
   const cardExample = `cards.zip\n├── symbol.png\n├── 001.png\n├── Blitzle-12-XY-Trainer-Kit.png\n└── Potion-21.jpg`;
   const symbolExample = `symbols.zip\n└── symbol.png`;
+  const multiExample = `batch.zip\n├── SV2A/\n│   ├── symbol.png\n│   └── 001.png\n├── SV2B/\n│   └── symbol.png\n└── SV3/\n    ├── 001.png\n    └── 002.png`;
+
+  const example = mode === "symbol" ? symbolExample : mode === "multi" ? multiExample : cardExample;
 
   return (
     <div className="surface p-5 h-fit">
@@ -285,9 +386,7 @@ function RulesPanel({ mode }) {
 
       <div className="mt-5 rounded-xl border border-white/10 bg-black/30 p-3">
         <div className="text-[11px] text-white/40 mb-1.5">Example zip structure</div>
-        <pre className="text-[11px] text-white/60 leading-relaxed font-mono">
-          {mode === "symbol" ? symbolExample : cardExample}
-        </pre>
+        <pre className="text-[11px] text-white/60 leading-relaxed font-mono">{example}</pre>
       </div>
     </div>
   );
@@ -301,14 +400,20 @@ export default function ImageIntakeClient() {
   const [status, setStatus] = useState("idle"); // idle | uploading | success | error
   const [result, setResult] = useState(null);
 
-  const isSymbolOnly = cardNumbers.trim().length === 0;
+  const isMultiSet = setCode.trim().length === 0;
+  const isSymbolOnly = !isMultiSet && cardNumbers.trim().length === 0;
 
   const canSubmit =
     status !== "uploading" &&
-    setCode.trim().length > 0 &&
     zipFile !== null;
 
   const parsedNumbers = parseCardNumbersForPreview(cardNumbers);
+
+  function deriveMode() {
+    if (isMultiSet) return "multi";
+    if (isSymbolOnly) return "symbol";
+    return "card";
+  }
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -317,11 +422,17 @@ export default function ImageIntakeClient() {
     setResult(null);
 
     const formData = new FormData();
-    formData.append("setCode", setCode.trim());
-    if (!isSymbolOnly) {
+    if (!isMultiSet) {
+      formData.append("setCode", setCode.trim());
+    }
+    if (!isMultiSet && !isSymbolOnly) {
       formData.append("cardNumbers", cardNumbers.trim());
     }
     formData.append("zipFile", zipFile);
+
+    console.log("isMultiSet:", isMultiSet);
+    console.log("setCode:", JSON.stringify(setCode));
+    for (let [k, v] of formData.entries()) console.log(k, v);
 
     try {
       const res = await fetch(`${API_URL}/api/uploads/card-images`, {
@@ -353,6 +464,8 @@ export default function ImageIntakeClient() {
     setSetCode("");
   }
 
+  const mode = deriveMode();
+
   return (
     <Section
       eyebrow="Tool"
@@ -370,32 +483,42 @@ export default function ImageIntakeClient() {
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="block text-[11px] text-white/55 mb-1.5">
-                  Set code <span className="text-white/30">(e.g. SV2A)</span>
+                  Set code <span className="text-white/30">(leave blank for multi-set zip)</span>
                 </label>
                 <input
                   value={setCode}
                   onChange={(e) => setSetCode(e.target.value.toUpperCase())}
-                  placeholder="SV2A"
+                  placeholder="SV2A  —  or leave blank"
                   disabled={status === "uploading"}
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[13px] text-white font-mono uppercase placeholder:text-white/20 outline-none focus:border-white/25 transition disabled:opacity-50"
                 />
+                {isMultiSet && (
+                  <div className="mt-1.5 text-[11px] text-blue-400/70">
+                    Multi-set mode — zip must use per-set folders
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="block text-[11px] text-white/55 mb-1.5">
                   Card numbers{" "}
-                  <span className="text-white/30">(comma-separated, leave blank for symbol only)</span>
+                  <span className="text-white/30">(comma-separated, leave blank to auto-resolve)</span>
                 </label>
                 <input
                   value={cardNumbers}
                   onChange={(e) => setCardNumbers(e.target.value)}
                   placeholder="1, 2, 10  —  or leave blank"
-                  disabled={status === "uploading"}
+                  disabled={status === "uploading" || isMultiSet}
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[13px] text-white font-mono placeholder:text-white/20 outline-none focus:border-white/25 transition disabled:opacity-50"
                 />
                 {isSymbolOnly && (
                   <div className="mt-1.5 text-[11px] text-amber-400/70">
                     Symbol-only mode — zip must contain only symbol.png / logo.png
+                  </div>
+                )}
+                {!isMultiSet && !isSymbolOnly && cardNumbers.trim().length === 0 && (
+                  <div className="mt-1.5 text-[11px] text-white/30">
+                    Card numbers auto-resolved from filenames
                   </div>
                 )}
               </div>
@@ -448,7 +571,7 @@ export default function ImageIntakeClient() {
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
                   </svg>
-                  {isSymbolOnly ? "Upload symbol" : "Upload images"}
+                  {mode === "multi" ? "Upload batch" : mode === "symbol" ? "Upload symbol" : "Upload images"}
                 </>
               )}
             </button>
@@ -463,9 +586,7 @@ export default function ImageIntakeClient() {
             )}
 
             {!canSubmit && status === "idle" && (
-              <span className="text-[12px] text-white/30">
-                {!setCode.trim() ? "Set code required" : "Zip file required"}
-              </span>
+              <span className="text-[12px] text-white/30">Zip file required</span>
             )}
           </div>
 
@@ -474,7 +595,7 @@ export default function ImageIntakeClient() {
 
         {/* ── RIGHT: Rules sidebar ────────────────────────────────── */}
         <div className="md:col-span-4">
-          <RulesPanel mode={isSymbolOnly ? "symbol" : "card"} />
+          <RulesPanel mode={mode} />
         </div>
       </div>
     </Section>
