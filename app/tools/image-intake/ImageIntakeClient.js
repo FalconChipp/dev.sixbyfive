@@ -11,7 +11,7 @@ const API_KEY = process.env.NEXT_PUBLIC_IMAGE_INTAKE_KEY || "";
 
 const SYMBOL_BASENAMES = new Set(["symbol", "logo"]);
 const ALLOWED_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
-const SET_CODE_RE = /^[A-Z0-9]{2,10}$/;
+const SET_CODE_RE = /^[A-Z0-9][A-Z0-9.\-]{1,9}$/;
 
 // ─── Zip detection ───────────────────────────────────────────────────────────
 async function detectZipMode(file) {
