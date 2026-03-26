@@ -1,314 +1,287 @@
-// app/components/Header.js
-//
-// FIXED:
-// - Hover dropdown works (doesn't snap shut)
-// - openTools/closeToolsSoon + closeTimerRef correctly scoped inside Header()
-// - Adds active + hover state to the Tools button
-// - Keeps outside-click + Escape close
-// - Clears close timer on unmount (prevents state updates after unmount)
-// - Mobile tools group unchanged
-
+// app/components/Header.js — v5
+// Tools nav item is now a dropdown with all tools listed directly
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import Button from "./ui/Button";
+import { useEffect, useRef, useState } from "react";
 
 const toolLinks = [
-  { href: "/tools/bulk-edit", label: "Bulk Edit UI", external: false },
-  { href: "/tools/cardmarket-exporter", label: "Cardmarket Exporter", external: false },
-  { href: "/tools/tcgplayer-exporter", label: "TCGPlayer Exporter", external: false },
-  { href: "/tools/image-intake", label: "TCGDex Image Intake", external: false }, 
+  { href: "/tools/bulk-edit",           label: "Bulk Edit UI",         desc: "Variant editor" },
+  { href: "/tools/cardmarket-exporter", label: "Cardmarket Exporter",  desc: "ID export script" },
+  { href: "/tools/tcgplayer-exporter",  label: "TCGPlayer Exporter",   desc: "API product IDs" },
+  { href: "/tools/image-intake",        label: "Card Image Intake",    desc: "Upload pipeline" },
 ];
 
+// Nav links — no Tools here, it gets its own dropdown
 const navLinks = [
-  { href: "/", label: "Home", external: false },
-
-  // Existing anchors
-  { href: "#work", label: "Work", external: false },
-  { href: "#services", label: "Services", external: false },
-  { href: "#process", label: "Process", external: false },
-
-  // External
-  { href: "https://tcg.sixbyfive.com", label: "TCG", external: true },
+  { href: "/work",     label: "Work" },
+  { href: "/services", label: "Services" },
+  { href: "/process",  label: "Process" },
+  { href: "https://tcg.sixbyfive.com", label: "TCG ↗", external: true },
 ];
 
-function IconMenu() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-      <path fill="currentColor" d="M4 6h16v2H4V6Zm0 5h16v2H4v-2Zm0 5h16v2H4v-2Z" />
-    </svg>
-  );
+function useDropdown() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const timer = useRef(null);
+  function show() { clearTimeout(timer.current); setOpen(true); }
+  function hideSoon() { clearTimeout(timer.current); timer.current = setTimeout(() => setOpen(false), 150); }
+  useEffect(() => {
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { clearTimeout(timer.current); document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, []);
+  return { open, setOpen, ref, show, hideSoon };
 }
 
-function IconClose() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.3 19.71 2.89 18.3 9.17 12 2.89 5.71 4.3 4.29l6.29 6.3 6.3-6.3 1.41 1.42Z"
-      />
-    </svg>
-  );
-}
+const navItemStyle = (active) => ({
+  fontSize: 13,
+  fontWeight: 500,
+  padding: "5px 10px",
+  borderRadius: 6,
+  textDecoration: "none",
+  transition: "all 0.15s",
+  color: active ? "var(--text)" : "var(--text-3)",
+  background: active ? "var(--bg-hover)" : "transparent",
+  display: "inline-block",
+  border: "none",
+  cursor: "pointer",
+  fontFamily: "var(--font-sans)",
+});
 
-function IconChevronDown() {
-  return (
-    <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M5.3 7.3a1 1 0 0 1 1.4 0L10 10.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.4Z"
-      />
-    </svg>
-  );
-}
-
-function NavItem({ link, pathname, onClick }) {
-  const base =
-    "rounded-md px-2 py-1 text-[13px] text-white/70 hover:text-white hover:bg-white/[0.06] transition";
-  const isExternal = link.external;
-
-  if (isExternal) {
-    return (
-      <a
-        key={link.href}
-        href={link.href}
-        target="_blank"
-        rel="noreferrer"
-        className={base}
-        onClick={onClick}
-      >
-        {link.label}
-      </a>
-    );
-  }
-
-  const isHash = link.href.startsWith("#");
-  if (isHash) {
-    return (
-      <a key={link.href} href={link.href} className={base} onClick={onClick}>
-        {link.label}
-      </a>
-    );
-  }
-
-  const isActive = pathname === link.href;
-  return (
-    <Link
-      key={link.href}
-      href={link.href}
-      className={`${base} ${isActive ? "text-white bg-white/[0.06]" : ""}`}
-      onClick={onClick}
-    >
-      {link.label}
-    </Link>
-  );
-}
+const dropdownStyle = {
+  position: "absolute",
+  top: "calc(100% + 8px)",
+  left: "50%",
+  transform: "translateX(-50%)",
+  background: "var(--bg-raised)",
+  border: "1px solid var(--border-2)",
+  borderRadius: 10,
+  overflow: "hidden",
+  boxShadow: "0 16px 40px rgba(0,0,0,0.5)",
+  zIndex: 100,
+  minWidth: 220,
+};
 
 export default function Header() {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const tools = useDropdown();
 
-  // Tools dropdown state
-  const [toolsOpen, setToolsOpen] = useState(false);
-  const toolsRef = useRef(null);
-
-  // NEW: hover-safe close delay (prevents menu snapping shut)
-  const closeTimerRef = useRef(null);
-
-  function openTools() {
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    setToolsOpen(true);
-  }
-
-  function closeToolsSoon() {
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    closeTimerRef.current = setTimeout(() => setToolsOpen(false), 160);
-  }
-
-  // Close dropdown on outside click + Escape
-  useEffect(() => {
-    function onDocMouseDown(e) {
-      if (!toolsRef.current) return;
-      if (!toolsRef.current.contains(e.target)) setToolsOpen(false);
-    }
-    function onKeyDown(e) {
-      if (e.key === "Escape") setToolsOpen(false);
-    }
-
-    document.addEventListener("mousedown", onDocMouseDown);
-    document.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-      document.removeEventListener("mousedown", onDocMouseDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, []);
-
-  const renderedLinks = useMemo(() => {
-    return navLinks.map((link) => (
-      <NavItem
-        key={link.href}
-        link={link}
-        pathname={pathname}
-        onClick={() => setOpen(false)}
-      />
-    ));
-  }, [pathname]);
-
-  const toolsIsActive = useMemo(() => {
-    return toolLinks.some((t) => pathname === t.href);
-  }, [pathname]);
+  const isActive = (href) => href !== "/" && pathname?.startsWith(href);
+  const toolsActive = toolLinks.some((t) => pathname === t.href);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-black/35 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="accent-glow flex h-9 w-9 items-center justify-center rounded-lg bg-[color:var(--accent)] text-[12px] font-black text-slate-950">
-            S
-          </div>
-          <div className="leading-tight">
-            <div className="text-[14px] font-semibold text-white tracking-tight">
-              SixByFive Studio
+    <header style={{
+      position: "sticky", top: 0, zIndex: 50,
+      background: "rgba(10,10,11,0.88)",
+      backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+      borderBottom: "1px solid var(--border)",
+    }}>
+      <div className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 56 }}>
+
+        {/* Logo */}
+        <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0, lineHeight: 1 }}>
+            {/* Top rule */}
+            <div style={{ width: "100%", height: 2, background: "white", marginBottom: 4 }} />
+            {/* SIXBYFIVE wordmark */}
+            <div style={{
+              fontFamily: "var(--font-sans)",
+              fontWeight: 800,
+              fontSize: 22,
+              letterSpacing: "-0.03em",
+              lineHeight: 1,
+              whiteSpace: "nowrap",
+            }}>
+              <span style={{ color: "white" }}>SIX</span>
+              <span style={{ color: "#e8a444" }}>BY</span>
+              <span style={{ color: "white" }}>FIVE</span>
             </div>
-            <div className="text-[11px] text-white/55">
-              Products • Platforms • Tooling
+            {/* Bottom: rules + STUDIOS */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, width: "100%" }}>
+              <div style={{ flex: 1, height: 1.5, background: "rgba(255,255,255,0.6)" }} />
+              <span style={{
+                fontFamily: "var(--font-sans)",
+                fontWeight: 600,
+                fontSize: 8,
+                letterSpacing: "0.3em",
+                color: "rgba(255,255,255,0.75)",
+                whiteSpace: "nowrap",
+              }}>STUDIOS</span>
+              <div style={{ flex: 1, height: 1.5, background: "rgba(255,255,255,0.6)" }} />
             </div>
           </div>
         </Link>
 
-        {/* DESKTOP NAV */}
-        <nav className="hidden items-center gap-1 md:flex">
-          {renderedLinks}
+        {/* Desktop nav */}
+        <nav style={{ display: "flex", alignItems: "center", gap: 2 }} className="sbf-desktop-nav">
 
-          {/* Tools dropdown (hover-safe) */}
-          <div
-            className="relative"
-            ref={toolsRef}
-            onMouseEnter={openTools}
-            onMouseLeave={closeToolsSoon}
-          >
-            <button
-              type="button"
-              className={[
-                "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[13px] transition",
-                "hover:text-white hover:bg-white/[0.06]",
-                toolsIsActive || toolsOpen
-                  ? "text-white bg-white/[0.06]"
-                  : "text-white/70",
-              ].join(" ")}
-              aria-haspopup="menu"
-              aria-expanded={toolsOpen ? "true" : "false"}
-              onClick={() => setToolsOpen((v) => !v)} // click fallback
+          {/* Regular links */}
+          {navLinks.map((l) => {
+            const active = isActive(l.href);
+            if (l.external) {
+              return (
+                <a key={l.href} href={l.href} target="_blank" rel="noreferrer"
+                  style={navItemStyle(active)}
+                  onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = active ? "var(--text)" : "var(--text-3)"; e.currentTarget.style.background = active ? "var(--bg-hover)" : "transparent"; }}>
+                  {l.label}
+                </a>
+              );
+            }
+            return (
+              <Link key={l.href} href={l.href}
+                style={navItemStyle(active)}
+                onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = active ? "var(--text)" : "var(--text-3)"; e.currentTarget.style.background = active ? "var(--bg-hover)" : "transparent"; }}>
+                {l.label}
+              </Link>
+            );
+          })}
+
+          {/* Tools dropdown — lists each tool directly */}
+          <div ref={tools.ref} style={{ position: "relative" }}
+            onMouseEnter={tools.show} onMouseLeave={tools.hideSoon}>
+
+            <button type="button"
+              onClick={() => tools.setOpen(v => !v)}
+              style={{
+                ...navItemStyle(toolsActive || tools.open),
+                display: "inline-flex", alignItems: "center", gap: 4,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+              onMouseLeave={e => {
+                if (!tools.open) {
+                  e.currentTarget.style.color = toolsActive ? "var(--text)" : "var(--text-3)";
+                  e.currentTarget.style.background = toolsActive ? "var(--bg-hover)" : "transparent";
+                }
+              }}
             >
               Tools
-              <span
-                className={[
-                  "text-white/70 transition-transform",
-                  toolsOpen ? "rotate-180" : "",
-                ].join(" ")}
-              >
-                <IconChevronDown />
-              </span>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
+                style={{ transform: tools.open ? "rotate(180deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }}>
+                <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
 
-            {toolsOpen && (
-              <div
-                role="menu"
-                className="absolute right-0 mt-2 w-56"
-                onMouseEnter={openTools}
-                onMouseLeave={closeToolsSoon}
-              >
-                {/* hover “bridge” to prevent gap between button + menu */}
-                <div className="absolute -top-2 left-0 right-0 h-2" />
+            {tools.open && (
+              <div style={dropdownStyle} onMouseEnter={tools.show} onMouseLeave={tools.hideSoon}>
+                {/* Bridge gap */}
+                <div style={{ position: "absolute", top: -8, left: 0, right: 0, height: 8 }} />
 
-                <div className="overflow-hidden rounded-xl border border-white/10 bg-black/80 backdrop-blur shadow-lg">
-                  <div className="px-3 py-2 text-[11px] uppercase tracking-[0.22em] text-white/45">
+                {/* Header row */}
+                <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-4)" }}>
                     Free tools
-                  </div>
+                  </span>
+                  <Link href="/tools" onClick={() => tools.setOpen(false)}
+                    style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-4)", textDecoration: "none", letterSpacing: "0.06em" }}
+                    onMouseEnter={e => e.currentTarget.style.color = "var(--text-2)"}
+                    onMouseLeave={e => e.currentTarget.style.color = "var(--text-4)"}>
+                    All tools →
+                  </Link>
+                </div>
 
-                  <div className="h-px bg-white/10" />
-
-                  <div className="p-1">
-                    {toolLinks.map((t) => {
-                      const isActive = pathname === t.href;
-                      return (
-                        <Link
-                          key={t.href}
-                          href={t.href}
-                          role="menuitem"
-                          className={[
-                            "block rounded-lg px-3 py-2 text-[13px] transition",
-                            isActive
-                              ? "bg-white/[0.10] text-white"
-                              : "text-white/75 hover:bg-white/[0.06] hover:text-white",
-                          ].join(" ")}
-                          onClick={() => setToolsOpen(false)}
-                        >
-                          <div className="font-semibold">{t.label}</div>
-                          <div className="mt-0.5 text-[11px] text-white/55">
-                            {t.href.includes("bulk-edit")
-                              ? "UI + docs in one page"
-                              : "Download + docs"}
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
+                {/* Tool list */}
+                <div style={{ padding: 4 }}>
+                  {toolLinks.map((t) => {
+                    const active = pathname === t.href;
+                    return (
+                      <Link key={t.href} href={t.href}
+                        onClick={() => tools.setOpen(false)}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 2,
+                          padding: "9px 10px",
+                          borderRadius: 6,
+                          textDecoration: "none",
+                          background: active ? "var(--bg-hover)" : "transparent",
+                          transition: "background 0.12s",
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
+                        onMouseLeave={e => e.currentTarget.style.background = active ? "var(--bg-hover)" : "transparent"}
+                      >
+                        <span style={{ fontSize: 13, fontWeight: 500, color: active ? "var(--text)" : "var(--text-2)" }}>
+                          {t.label}
+                        </span>
+                        <span style={{ fontSize: 11, color: "var(--text-4)", fontFamily: "var(--font-mono)" }}>
+                          {t.desc}
+                        </span>
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             )}
           </div>
 
-          {/* <Button href="#contact" variant="primary" className="ml-2">
-            Contact
-          </Button> */}
+          {/* CTA */}
+          <a href="https://uk.linkedin.com/company/sixbyfive" target="_blank" rel="noreferrer"
+            className="btn btn-primary" style={{ marginLeft: 8, padding: "6px 14px", fontSize: 12 }}>
+            Get in touch ↗
+          </a>
         </nav>
 
-        {/* MOBILE MENU BUTTON */}
-        <button
-          type="button"
-          className="md:hidden inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.04] p-2 text-white/80 hover:bg-white/[0.08] transition"
-          aria-label={open ? "Close menu" : "Open menu"}
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? <IconClose /> : <IconMenu />}
+        {/* Mobile toggle */}
+        <button type="button" className="sbf-mobile-btn"
+          onClick={() => setMobileOpen(v => !v)}
+          style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-2)", cursor: "pointer", padding: "5px 10px", fontSize: 13, display: "none" }}>
+          {mobileOpen ? "✕" : "Menu"}
         </button>
       </div>
 
-      {/* MOBILE MENU */}
-      {open && (
-        <div className="md:hidden border-t border-white/10 bg-black/45 backdrop-blur">
-          <div className="mx-auto max-w-6xl px-4 py-3 flex flex-col gap-1">
-            {renderedLinks}
+      {/* Mobile menu */}
+      {mobileOpen && (
+        <div style={{ borderTop: "1px solid var(--border)", padding: "8px 0 16px" }}>
+          <div className="wrap" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {navLinks.map((l) => (
+              l.external
+                ? <a key={l.href} href={l.href} target="_blank" rel="noreferrer"
+                    style={{ fontSize: 13, fontWeight: 500, padding: "8px 10px", color: "var(--text-2)", textDecoration: "none", borderRadius: 6 }}
+                    onClick={() => setMobileOpen(false)}>{l.label}</a>
+                : <Link key={l.href} href={l.href}
+                    style={{ fontSize: 13, fontWeight: 500, padding: "8px 10px", color: isActive(l.href) ? "var(--text)" : "var(--text-2)", textDecoration: "none", borderRadius: 6 }}
+                    onClick={() => setMobileOpen(false)}>{l.label}</Link>
+            ))}
 
-            {/* Tools group in mobile */}
-            <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.03] p-2">
-              <div className="px-2 py-1 text-[11px] uppercase tracking-[0.22em] text-white/45">
-                Tools
+            {/* Tools section in mobile */}
+            <div style={{ marginTop: 8, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 10px 8px" }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-4)" }}>Tools</span>
+                <Link href="/tools" style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-4)", textDecoration: "none" }}
+                  onClick={() => setMobileOpen(false)}>All →</Link>
               </div>
-              <div className="mt-1 flex flex-col gap-1">
-                {toolLinks.map((t) => (
-                  <Link
-                    key={t.href}
-                    href={t.href}
-                    className="rounded-lg px-2 py-2 text-[13px] text-white/75 hover:text-white hover:bg-white/[0.06] transition"
-                    onClick={() => setOpen(false)}
-                  >
-                    {t.label}
-                  </Link>
-                ))}
-              </div>
+              {toolLinks.map((t) => (
+                <Link key={t.href} href={t.href}
+                  style={{ display: "flex", flexDirection: "column", gap: 1, padding: "8px 10px", borderRadius: 6, textDecoration: "none" }}
+                  onClick={() => setMobileOpen(false)}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: pathname === t.href ? "var(--text)" : "var(--text-2)" }}>{t.label}</span>
+                  <span style={{ fontSize: 11, color: "var(--text-4)", fontFamily: "var(--font-mono)" }}>{t.desc}</span>
+                </Link>
+              ))}
             </div>
 
-            {/* <Button href="#contact" variant="primary" className="mt-2">
-              Contact
-            </Button> */}
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+              <a href="https://uk.linkedin.com/company/sixbyfive" target="_blank" rel="noreferrer"
+                className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }}>
+                Get in touch ↗
+              </a>
+            </div>
           </div>
         </div>
       )}
+
+      <style>{`
+        @media (max-width: 720px) {
+          .sbf-desktop-nav { display: none !important; }
+          .sbf-mobile-btn  { display: flex !important; }
+        }
+      `}</style>
     </header>
   );
 }
