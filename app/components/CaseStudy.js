@@ -5,9 +5,9 @@
 import Link from "next/link";
 
 const mono = { fontFamily: "var(--font-mono)" };
-const monoLabel = { ...mono, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-4)", display: "block", marginBottom: 14 };
-const dash = { color: "var(--accent)", fontSize: 14, lineHeight: "20px", flexShrink: 0 };
-const cross = { color: "var(--text-4)", fontSize: 14, lineHeight: "20px", flexShrink: 0 };
+const monoLabel = { ...mono, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-4)", display: "block", marginBottom: 14 };
+const dash = { color: "var(--accent)", fontSize: 15, lineHeight: "24px", flexShrink: 0 };
+const cross = { color: "var(--text-3)", fontSize: 15, lineHeight: "24px", flexShrink: 0 };
 
 function Section({ label, children }) {
   return (
@@ -23,16 +23,16 @@ function Section({ label, children }) {
 }
 
 function BodyText({ children }) {
-  return <p style={{ fontSize: 14, color: "var(--text-2)", lineHeight: 1.75, maxWidth: 600, marginBottom: 16 }}>{children}</p>;
+  return <p style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.75, maxWidth: 600, marginBottom: 16 }}>{children}</p>;
 }
 
 function DashList({ items }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {items.map((item, i) => (
-        <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+        <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
           <span style={dash}>—</span>
-          <span style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.65 }}>
+          <span style={{ fontSize: 14, color: "var(--text-2)", lineHeight: 1.7 }}>
             {typeof item === "string" ? item : item}
           </span>
         </div>
@@ -43,11 +43,11 @@ function DashList({ items }) {
 
 function CrossList({ items }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {items.map((item, i) => (
-        <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+        <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
           <span style={cross}>×</span>
-          <span style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.65 }}>{item}</span>
+          <span style={{ fontSize: 14, color: "var(--text-2)", lineHeight: 1.7 }}>{item}</span>
         </div>
       ))}
     </div>
@@ -60,7 +60,7 @@ function StackTable({ rows }) {
       {rows.map((r) => (
         <div key={r.label} style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 16, alignItems: "baseline" }}>
           <span style={{ ...mono, fontSize: 11, color: "var(--text-4)", letterSpacing: "0.06em" }}>{r.label}</span>
-          <span style={{ fontSize: 13, color: "var(--text-2)" }}>{r.value}</span>
+          <span style={{ fontSize: 14, color: "var(--text-2)" }}>{r.value}</span>
         </div>
       ))}
     </div>
@@ -70,7 +70,7 @@ function StackTable({ rows }) {
 function Callout({ children }) {
   return (
     <div style={{ padding: "16px 20px", borderLeft: "2px solid var(--border-2)", marginTop: 24, marginBottom: 8 }}>
-      <p style={{ fontSize: 13, color: "var(--text-3)", lineHeight: 1.7, ...mono }}>{children}</p>
+      <p style={{ fontSize: 14, color: "var(--text-3)", lineHeight: 1.7, ...mono }}>{children}</p>
     </div>
   );
 }
@@ -95,7 +95,7 @@ export default function CaseStudy({ data }) {
       {/* Page header */}
       <section style={{ padding: "72px 0 64px" }}>
         <div className="wrap">
-          <Link href="/work" style={{ ...mono, fontSize: 11, color: "var(--text-4)", textDecoration: "none", letterSpacing: "0.08em", display: "inline-block", marginBottom: 40 }}>
+          <Link href="/work" style={{ ...mono, fontSize: 12, color: "var(--text-4)", textDecoration: "none", letterSpacing: "0.08em", display: "inline-block", marginBottom: 40 }}>
             ← Work
           </Link>
 
@@ -189,7 +189,7 @@ export default function CaseStudy({ data }) {
         {/* Explicitly not built */}
         {notBuilt && (
           <Section label="Out of scope">
-            <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 14, color: "var(--text-3)", marginBottom: 20, lineHeight: 1.6 }}>
               Worth being explicit about what this project deliberately didn&apos;t try to do.
             </p>
             <CrossList items={notBuilt} />
