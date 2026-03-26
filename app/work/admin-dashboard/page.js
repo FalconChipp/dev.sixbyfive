@@ -1,5 +1,5 @@
 // app/work/admin-dashboard/page.js
-import CaseStudy from "../../../components/CaseStudy";
+import CaseStudy from "@/app/components/CaseStudy";
 
 export const metadata = {
   title: "TCG Admin Dashboard — SixByFive Studio",

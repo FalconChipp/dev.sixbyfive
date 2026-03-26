@@ -1,5 +1,5 @@
 // app/work/set-ingestion/page.js
-import CaseStudy from "../../../components/CaseStudy";
+import CaseStudy from "@/app/components/CaseStudy";
 
 export const metadata = {
   title: "Set Ingestion Backend — SixByFive Studio",

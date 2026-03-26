@@ -1,5 +1,5 @@
 // app/work/tcgdex/page.js
-import CaseStudy from "../../../components/CaseStudy";
+import CaseStudy from "@/app/components/CaseStudy";
 
 export const metadata = {
   title: "TCGDex — SixByFive Studio",

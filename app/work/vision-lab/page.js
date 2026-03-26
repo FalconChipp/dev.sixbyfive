@@ -1,5 +1,5 @@
 // app/work/vision-lab/page.js — updated: AI training pipeline for card recognition
-import CaseStudy from "../../../components/CaseStudy";
+import CaseStudy from "@/app/components/CaseStudy";
 
 export const metadata = {
   title: "Vision Lab — SixByFive Studio",

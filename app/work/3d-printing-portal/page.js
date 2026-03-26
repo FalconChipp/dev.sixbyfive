@@ -1,5 +1,5 @@
 // app/work/3d-printing-portal/page.js
-import CaseStudy from "../../../components/CaseStudy";
+import CaseStudy from "@/app/components/CaseStudy";
 
 export const metadata = {
   title: "3D Printing Portal — SixByFive Studio",

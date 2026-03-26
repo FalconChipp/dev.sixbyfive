@@ -1,5 +1,5 @@
 // app/work/tcg-platform/page.js
-import CaseStudy from "../../../components/CaseStudy";
+import CaseStudy from "@/app/components/CaseStudy";
 
 export const metadata = {
   title: "SixByFive TCG Platform — SixByFive Studio",
