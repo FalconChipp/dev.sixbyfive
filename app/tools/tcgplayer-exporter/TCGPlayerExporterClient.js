@@ -1,3 +1,4 @@
+// UPDATED (2026-04-09) Tyler Tuttle-added user agent header shape name / version. added in for the three functions for the API
 // app/tools/tcgplayer-exporter/TCGPlayerExporterClient.js
 //
 // UPDATED (2026-03-07)
@@ -56,8 +57,13 @@ function uniqSorted(nums) {
 }
 
 // ─── API ───────────────────────────────────────────────────────────
+const USER_AGENT = 'Dev-SBF/1.0.0'
 async function fetchGroups() {
-  const r = await fetch(`${API_BASE}/${POKEMON_CATEGORY}/groups`);
+  const r = await fetch(`${API_BASE}/${POKEMON_CATEGORY}/groups`, {
+    headers: {
+      'User-Agent' : USER_AGENT
+    }
+  });
   const d = await r.json();
   return (d.results || []).sort(
     (a, b) => new Date(b.publishedOn) - new Date(a.publishedOn)
@@ -65,12 +71,20 @@ async function fetchGroups() {
 }
 
 async function fetchProducts(groupId) {
-  const r = await fetch(`${API_BASE}/${POKEMON_CATEGORY}/${groupId}/products`);
+  const r = await fetch(`${API_BASE}/${POKEMON_CATEGORY}/${groupId}/products`, {
+    headers: {
+      'User-Agent': USER_AGENT
+    }
+  });
   return (await r.json()).results || [];
 }
 
 async function fetchPrices(groupId) {
-  const r = await fetch(`${API_BASE}/${POKEMON_CATEGORY}/${groupId}/prices`);
+  const r = await fetch(`${API_BASE}/${POKEMON_CATEGORY}/${groupId}/prices`, {
+    headers: {
+      'User-Agent': USER_AGENT
+    }
+  });
   return (await r.json()).results || [];
 }
 
