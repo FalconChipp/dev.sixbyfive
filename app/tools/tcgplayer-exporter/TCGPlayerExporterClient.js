@@ -29,8 +29,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Section from "../../components/ui/Section";
 
 // ─── Config ────────────────────────────────────────────────────────
-const API_BASE = "https://tcgcsv.com/tcgplayer";
-const POKEMON_CATEGORY = 3;
+const LOCAL_API_BASE = "/api/tools/tcgplayer-exporter";
 
 // ─── Helpers ───────────────────────────────────────────────────────
 function pad3(n) {
@@ -57,35 +56,33 @@ function uniqSorted(nums) {
 }
 
 // ─── API ───────────────────────────────────────────────────────────
-const USER_AGENT = 'Dev-SBF/1.0.0'
 async function fetchGroups() {
-  const r = await fetch(`${API_BASE}/${POKEMON_CATEGORY}/groups`, {
-    headers: {
-      'User-Agent' : USER_AGENT
-    }
-  });
+  const r = await fetch(`${LOCAL_API_BASE}?type=groups`);
   const d = await r.json();
+
+  if (!r.ok) {
+    throw new Error(d?.error || "Failed to fetch TCGPlayer groups");
+  }
+
   return (d.results || []).sort(
     (a, b) => new Date(b.publishedOn) - new Date(a.publishedOn)
   );
 }
 
-async function fetchProducts(groupId) {
-  const r = await fetch(`${API_BASE}/${POKEMON_CATEGORY}/${groupId}/products`, {
-    headers: {
-      'User-Agent': USER_AGENT
-    }
-  });
-  return (await r.json()).results || [];
-}
+async function fetchSetData(groupId) {
+  const r = await fetch(
+    `${LOCAL_API_BASE}?type=set&groupId=${encodeURIComponent(groupId)}`
+  );
+  const d = await r.json();
 
-async function fetchPrices(groupId) {
-  const r = await fetch(`${API_BASE}/${POKEMON_CATEGORY}/${groupId}/prices`, {
-    headers: {
-      'User-Agent': USER_AGENT
-    }
-  });
-  return (await r.json()).results || [];
+  if (!r.ok) {
+    throw new Error(d?.error || `Failed to fetch TCGPlayer set ${groupId}`);
+  }
+
+  return {
+    products: d.products || [],
+    prices: d.prices || [],
+  };
 }
 
 // ─── Data transforms ───────────────────────────────────────────────
@@ -322,10 +319,7 @@ export default function TCGPlayerExporterClient() {
     setCopyStatus("");
 
     try {
-      const [prods, prs] = await Promise.all([
-        fetchProducts(group.groupId),
-        fetchPrices(group.groupId),
-      ]);
+      const { products: prods, prices: prs } = await fetchSetData(group.groupId);
       setProducts(prods);
       setPrices(prs);
     } catch (e) {
