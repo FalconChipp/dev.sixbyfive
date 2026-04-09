@@ -9,6 +9,17 @@ import Section from "../../components/ui/Section";
 const API_URL = process.env.NEXT_PUBLIC_IMAGE_INTAKE_URL || "https://tcgdex-upload.sixbyfive.com";
 const API_KEY = process.env.NEXT_PUBLIC_IMAGE_INTAKE_KEY || "";
 
+/**
+ * TEMPORARY MAINTENANCE FLAG
+ * ---------------------------------------------------------------------------
+ * Changed:
+ * - Added a hard toggle so uploads can be disabled from the UI immediately.
+ * - This prevents file selection, drag/drop, and submit requests.
+ *
+ * When you're ready to re-enable uploads later, set this back to false.
+ */
+const UPLOADS_TEMPORARILY_DISABLED = true;
+
 const SYMBOL_BASENAMES = new Set(["symbol", "logo"]);
 const ALLOWED_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 const SET_CODE_RE = /^[A-Z0-9][A-Z0-9.+\-]{1,9}$/;
@@ -101,6 +112,30 @@ function StatusIcon({ status }) {
   return null;
 }
 
+// ─── Temporary notice ────────────────────────────────────────────────────────
+function MaintenanceNotice() {
+  return (
+    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-500/30 bg-amber-500/10">
+          <svg className="h-3.5 w-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86l-7.5 13A1 1 0 003.66 18h16.68a1 1 0 00.87-1.5l-7.5-13a1 1 0 00-1.74 0z" />
+          </svg>
+        </div>
+
+        <div>
+          <div className="text-[13px] font-semibold text-amber-300">
+            Uploads are temporarily unavailable
+          </div>
+          <div className="mt-1 text-[13px] text-amber-200/75">
+            We’re currently making improvements to the image intake system. Uploads have been temporarily disabled while this work is completed.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Detection badge ─────────────────────────────────────────────────────────
 function DetectionBadge({ detectedMode, overrideDetection, onToggleOverride }) {
   if (!detectedMode || detectedMode === "unknown") return null;
@@ -142,12 +177,22 @@ function DropZone({ file, detectedMode, overrideDetection, onToggleOverride, onF
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();
+
+    if (disabled) {
+      setDragging(false);
+      return;
+    }
+
     setDragging(false);
     const f = e.dataTransfer?.files?.[0];
     if (f) onFile(f);
-  }, [onFile]);
+  }, [onFile, disabled]);
 
-  const handleDragOver = (e) => { e.preventDefault(); setDragging(true); };
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    if (!disabled) setDragging(true);
+  };
+
   const handleDragLeave = () => setDragging(false);
 
   return (
@@ -157,9 +202,11 @@ function DropZone({ file, detectedMode, overrideDetection, onToggleOverride, onF
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       className={[
-        "relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition cursor-pointer select-none",
-        disabled ? "opacity-50 cursor-not-allowed" : "hover:border-white/30 hover:bg-white/[0.03]",
-        dragging ? "border-[color:var(--accent)]/60 bg-[color:var(--accent)]/5" : "border-white/15",
+        "relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition select-none",
+        disabled
+          ? "opacity-60 cursor-not-allowed border-white/10 bg-white/[0.02]"
+          : "cursor-pointer hover:border-white/30 hover:bg-white/[0.03]",
+        !disabled && dragging ? "border-[color:var(--accent)]/60 bg-[color:var(--accent)]/5" : "",
         file ? "bg-white/[0.03]" : "",
       ].join(" ")}
     >
@@ -169,7 +216,11 @@ function DropZone({ file, detectedMode, overrideDetection, onToggleOverride, onF
         accept=".zip"
         className="sr-only"
         disabled={disabled}
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
+        onChange={(e) => {
+          if (disabled) return;
+          const f = e.target.files?.[0];
+          if (f) onFile(f);
+        }}
       />
 
       {file ? (
@@ -191,6 +242,9 @@ function DropZone({ file, detectedMode, overrideDetection, onToggleOverride, onF
           {!disabled && (
             <div className="text-[11px] text-white/35">Click or drop to replace</div>
           )}
+          {disabled && (
+            <div className="text-[11px] text-amber-400/70">Uploads are temporarily disabled</div>
+          )}
         </>
       ) : (
         <>
@@ -200,8 +254,12 @@ function DropZone({ file, detectedMode, overrideDetection, onToggleOverride, onF
             </svg>
           </div>
           <div>
-            <div className="text-[14px] font-semibold text-white/80">Drop a .zip file here</div>
-            <div className="mt-1 text-[12px] text-white/40">or click to browse</div>
+            <div className="text-[14px] font-semibold text-white/80">
+              {disabled ? "Uploads temporarily disabled" : "Drop a .zip file here"}
+            </div>
+            <div className="mt-1 text-[12px] text-white/40">
+              {disabled ? "We’re currently making improvements to this tool" : "or click to browse"}
+            </div>
           </div>
           <div className="text-[11px] text-white/25">Images must be at root level • filenames must contain a number</div>
         </>
@@ -616,7 +674,15 @@ export default function ImageIntakeClient() {
 
   const isSymbolOnly = !effectiveIsMultiSet && cardNumbers.trim().length === 0;
 
-  const canSubmit = status !== "uploading" && zipFile !== null;
+  /**
+   * Changed:
+   * - Submit is now also blocked when maintenance mode is enabled.
+   */
+  const canSubmit =
+    !UPLOADS_TEMPORARILY_DISABLED &&
+    status !== "uploading" &&
+    zipFile !== null;
+
   const parsedNumbers = parseCardNumbersForPreview(cardNumbers);
 
   function deriveMode() {
@@ -629,6 +695,12 @@ export default function ImageIntakeClient() {
   }
 
   async function handleFile(file) {
+    /**
+     * Changed:
+     * - Prevent file handling entirely while uploads are disabled.
+     */
+    if (UPLOADS_TEMPORARILY_DISABLED) return;
+
     setZipFile(file);
     setDetectedMode(null);
     setOverrideDetection(false);
@@ -646,6 +718,20 @@ export default function ImageIntakeClient() {
   }
 
   async function handleSubmit() {
+    /**
+     * Changed:
+     * - Hard block submit during maintenance.
+     * - Sets a friendly UI error if someone somehow triggers it anyway.
+     */
+    if (UPLOADS_TEMPORARILY_DISABLED) {
+      setResult({
+        success: false,
+        error: "Uploads are temporarily unavailable while we make improvements to the intake system.",
+      });
+      setStatus("error");
+      return;
+    }
+
     if (!canSubmit) return;
 
     setStatus("uploading");
@@ -702,6 +788,8 @@ export default function ImageIntakeClient() {
       <div className="grid gap-6 md:grid-cols-12">
         {/* ── LEFT: Form ─────────────────────────────────────────── */}
         <div className="md:col-span-8 space-y-4">
+          {UPLOADS_TEMPORARILY_DISABLED && <MaintenanceNotice />}
+
           <div className="surface p-5">
             <div className="text-[12px] font-semibold text-white mb-4">Submission details</div>
 
@@ -714,7 +802,7 @@ export default function ImageIntakeClient() {
                   value={setCode}
                   onChange={(e) => setSetCode(e.target.value.toUpperCase())}
                   placeholder={isMultiSetLocked ? "Auto-detected from folders" : "SV2A  —  or leave blank"}
-                  disabled={status === "uploading" || isMultiSetLocked}
+                  disabled={status === "uploading" || isMultiSetLocked || UPLOADS_TEMPORARILY_DISABLED}
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[13px] text-white font-mono uppercase placeholder:text-white/20 outline-none focus:border-white/25 transition disabled:opacity-50"
                 />
                 {effectiveIsMultiSet && (
@@ -733,7 +821,7 @@ export default function ImageIntakeClient() {
                   value={cardNumbers}
                   onChange={(e) => setCardNumbers(e.target.value)}
                   placeholder="1, 2, 10  —  or leave blank"
-                  disabled={status === "uploading" || effectiveIsMultiSet}
+                  disabled={status === "uploading" || effectiveIsMultiSet || UPLOADS_TEMPORARILY_DISABLED}
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[13px] text-white font-mono placeholder:text-white/20 outline-none focus:border-white/25 transition disabled:opacity-50"
                 />
                 {isSymbolOnly && (
@@ -766,7 +854,7 @@ export default function ImageIntakeClient() {
               overrideDetection={overrideDetection}
               onToggleOverride={handleToggleOverride}
               onFile={handleFile}
-              disabled={status === "uploading"}
+              disabled={status === "uploading" || UPLOADS_TEMPORARILY_DISABLED}
             />
           </div>
 
@@ -794,7 +882,13 @@ export default function ImageIntakeClient() {
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
                   </svg>
-                  {mode === "multi" ? "Upload batch" : mode === "symbol" ? "Upload symbol" : "Upload images"}
+                  {UPLOADS_TEMPORARILY_DISABLED
+                    ? "Temporarily unavailable"
+                    : mode === "multi"
+                      ? "Upload batch"
+                      : mode === "symbol"
+                        ? "Upload symbol"
+                        : "Upload images"}
                 </>
               )}
             </button>
@@ -809,7 +903,11 @@ export default function ImageIntakeClient() {
             )}
 
             {!canSubmit && status === "idle" && (
-              <span className="text-[12px] text-white/30">Zip file required</span>
+              <span className="text-[12px] text-white/30">
+                {UPLOADS_TEMPORARILY_DISABLED
+                  ? "Uploads are temporarily disabled while improvements are being made"
+                  : "Zip file required"}
+              </span>
             )}
           </div>
 
