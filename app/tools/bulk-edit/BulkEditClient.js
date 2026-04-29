@@ -478,6 +478,7 @@ function parseToMap(json) {
         ? obj.sources.filter((s) => Number.isFinite(Number(s?.productId)))
         : [];
 
+    const seenCmIds = new Set();
     const cardmarketProducts = rawCardmarketProducts
       .map((p) => {
         const next = {
@@ -498,7 +499,13 @@ function parseToMap(json) {
           rawVariantLabel: p.variantLabel || "",
         };
       })
-      .filter((p) => allowedCardmarketIds.has(Number(p.productId)));
+      .filter((p) => {
+        const id = Number(p.productId);
+        if (!allowedCardmarketIds.has(id)) return false;
+        if (seenCmIds.has(id)) return false;
+        seenCmIds.add(id);
+        return true;
+      });
 
     const scalar = typeof obj === "number" ? obj : null;
 
@@ -640,8 +647,13 @@ function ensureAutofill(cardsById, overrides, cardId) {
   // pattern products are holo-pattern additionals in the JSON.
   const unresolvedCmAdditionals = [];
 
+  // Only the primary base CM product (baseIds[0]) is covered by base-locking.
+  // Secondary base products (e.g. SSP sets where CM doesn't use a separate Additionals
+  // slug) need to flow through the normal assignment logic instead of being skipped.
+  const primaryBaseCmId = card.baseIds?.[0] ? Number(card.baseIds[0]) : null;
+
   for (const cm of card.cardmarketProducts || []) {
-    const isBase = cm.bucket === "base";
+    const isBase = cm.bucket === "base" && Number(cm.productId) === primaryBaseCmId;
     const foil = sanitizeCardmarketVariantLabel(cm);
 
     if (isBase) continue;
@@ -784,8 +796,8 @@ function generateCodeBlock(card, override) {
     let tcg = safeNum(v.tcgplayer);
 
     if (isBaseLockedVariant(card, v.type, v.foil)) {
-      if (baseId) cm = baseId;
-      if (baseTcgId) tcg = baseTcgId;
+      if (!cm && baseId) cm = baseId;
+      if (!tcg && baseTcgId) tcg = baseTcgId;
     }
 
     lines.push("\t{");
@@ -814,18 +826,20 @@ function generateCodeBlock(card, override) {
 }
 
 function getEffectiveCmId(v, card) {
+  if (safeNum(v.cardmarket)) return Number(v.cardmarket);
   if (isBaseLockedVariant(card, v.type, v.foil)) {
     return card?.baseIds?.[0] || null;
   }
-  return safeNum(v.cardmarket) ? Number(v.cardmarket) : null;
+  return null;
 }
 
 function getEffectiveTcgId(v, card) {
+  if (safeNum(v.tcgplayer)) return Number(v.tcgplayer);
   if (isBaseLockedVariant(card, v.type, v.foil)) {
     const bp = getBaseTcgplayerProduct(card);
     return bp?.productId || null;
   }
-  return safeNum(v.tcgplayer) ? Number(v.tcgplayer) : null;
+  return null;
 }
 
 function getCardmarketProductById(card, productId) {
@@ -1603,15 +1617,14 @@ export default function BulkEditClient() {
                                         value={v.cardmarket || ""}
                                         onChange={(e) => updateVariant(idx, "cardmarket", e.target.value)}
                                         type="number"
-                                        disabled={locked}
-                                        placeholder={locked ? "locked to base" : "optional"}
+                                        placeholder="optional"
                                         className={`w-full rounded-xl border px-3 py-2 text-[13px] outline-none bg-black/30 text-white ${
-                                          locked ? "border-white/5 text-white/50" : "border-white/10"
+                                          locked && !safeNum(v.cardmarket) ? "border-white/5 text-white/50" : "border-white/10"
                                         }`}
                                       />
 
-                                      {locked && effectiveCm && (
-                                        <div className="mt-1 text-[10px] text-white/40">→ {effectiveCm}</div>
+                                      {locked && !safeNum(v.cardmarket) && effectiveCm && (
+                                        <div className="mt-1 text-[10px] text-white/40">↓ base: {effectiveCm}</div>
                                       )}
 
                                       {matchedCmProduct?.name && (
@@ -1636,17 +1649,16 @@ export default function BulkEditClient() {
                                         value={v.tcgplayer || ""}
                                         onChange={(e) => updateVariant(idx, "tcgplayer", e.target.value)}
                                         type="number"
-                                        disabled={locked}
-                                        placeholder={locked ? "locked to base" : "optional"}
+                                        placeholder="optional"
                                         className={`w-full rounded-xl border px-3 py-2 text-[13px] outline-none bg-black/30 text-indigo-200 ${
-                                          locked
+                                          locked && !safeNum(v.tcgplayer)
                                             ? "border-indigo-500/10 text-indigo-200/50"
                                             : "border-indigo-500/20"
                                         }`}
                                       />
 
-                                      {locked && effectiveTcg && (
-                                        <div className="mt-1 text-[10px] text-indigo-300/40">→ {effectiveTcg}</div>
+                                      {locked && !safeNum(v.tcgplayer) && effectiveTcg && (
+                                        <div className="mt-1 text-[10px] text-indigo-300/40">↓ base: {effectiveTcg}</div>
                                       )}
 
                                       {matchedTcgProduct?.name && (

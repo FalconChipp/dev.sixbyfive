@@ -652,11 +652,35 @@
 
       const seenProducts = new Set();
       e.cardmarketProducts = (e.cardmarketProducts || []).filter((p) => {
-        const key = `${p.productId}|${p.bucket}|${p.url}`;
-        if (seenProducts.has(key)) return false;
-        seenProducts.add(key);
+        const id = Number(p.productId);
+        if (seenProducts.has(id)) return false;
+        seenProducts.add(id);
         return true;
       });
+
+      // For sets where CM doesn't use a separate Additionals slug (e.g. Surging Sparks),
+      // multiple products for the same card all land on the base page with bucket="base".
+      // Reclassify the 2nd, 3rd, ... base products as "additional" so they flow through
+      // the variant assignment logic in the Bulk Edit UI instead of being silently dropped.
+      const baseProducts = e.cardmarketProducts.filter((p) => p.bucket === "base");
+      if (baseProducts.length > 1) {
+        const primaryId = baseProducts[0].productId;
+        for (const p of e.cardmarketProducts) {
+          if (p.bucket === "base" && p.productId !== primaryId) {
+            p.bucket = "additional";
+          }
+        }
+        for (const s of e.sources || []) {
+          if (s.bucket === "base" && s.productId !== primaryId) {
+            s.bucket = "additional";
+          }
+        }
+        e.ids.base = [primaryId];
+        e.ids.additional = uniqSorted([
+          ...e.ids.additional,
+          ...baseProducts.slice(1).map((p) => p.productId),
+        ]);
+      }
     }
 
     saveStore(groupKey, store);
