@@ -18,7 +18,7 @@ const API_KEY = process.env.NEXT_PUBLIC_IMAGE_INTAKE_KEY || "";
  *
  * When you're ready to re-enable uploads later, set this back to false.
  */
-const UPLOADS_TEMPORARILY_DISABLED = true;
+const UPLOADS_TEMPORARILY_DISABLED = false;
 
 const SYMBOL_BASENAMES = new Set(["symbol", "logo"]);
 const ALLOWED_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
