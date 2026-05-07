@@ -5,6 +5,16 @@ import Link from "next/link";
 
 const workPreview = [
   {
+    title: "Intent",
+    type: "npm package",
+    role: "Author",
+    description: "A git-native reasoning layer for software teams and AI agents. Plans, decisions, and constraints committed alongside code — surfaced via CLI and MCP server.",
+    stack: "TypeScript · Zod · MCP · Commander.js",
+    href: "/work/intent",
+    external: false,
+    badge: "Open source",
+  },
+  {
     title: "TCGDex",
     type: "Open Source",
     role: "Maintainer",

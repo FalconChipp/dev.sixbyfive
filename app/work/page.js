@@ -10,6 +10,16 @@ export const metadata = {
 
 const standaloneProjects = [
   {
+    title: "Intent",
+    type: "npm package",
+    role: "Author",
+    status: "Active",
+    year: "2026",
+    href: "/work/intent",
+    description: "A git-native reasoning layer that documents the architectural why behind code changes — plans, decisions, constraints, and system definitions committed alongside code and surfaced to AI agents via MCP.",
+    stack: "TypeScript · Commander.js · Zod · MCP · simple-git",
+  },
+  {
     title: "TCGDex",
     type: "Open Source",
     role: "Maintainer",
