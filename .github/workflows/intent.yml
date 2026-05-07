@@ -1,0 +1,23 @@
+name: Intent Validate
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  intent:
+    name: Validate intent context
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install intent CLI
+        run: npm install -g @dev-sixbyfive/intent-cli
+
+      - name: Validate
+        run: intent validate
