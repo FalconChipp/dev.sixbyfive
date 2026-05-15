@@ -657,6 +657,8 @@ function DocsSection() {
 
 // ─── Main component ──────────────────────────────────────────────────────────
 export default function ImageIntakeClient() {
+  const [lang, setLang] = useState("");
+  const [serie, setSerie] = useState("");
   const [setCode, setSetCode] = useState("");
   const [cardNumbers, setCardNumbers] = useState("");
   const [zipFile, setZipFile] = useState(null);
@@ -681,7 +683,9 @@ export default function ImageIntakeClient() {
   const canSubmit =
     !UPLOADS_TEMPORARILY_DISABLED &&
     status !== "uploading" &&
-    zipFile !== null;
+    zipFile !== null &&
+    lang !== "" &&
+    serie !== "";
 
   const parsedNumbers = parseCardNumbersForPreview(cardNumbers);
 
@@ -738,6 +742,8 @@ export default function ImageIntakeClient() {
     setResult(null);
 
     const formData = new FormData();
+    formData.append("lang", lang);
+    formData.append("serie", serie);
     if (!effectiveIsMultiSet) formData.append("setCode", setCode.trim());
     if (!effectiveIsMultiSet && !isSymbolOnly) formData.append("cardNumbers", cardNumbers.trim());
     formData.append("zipFile", zipFile);
@@ -757,6 +763,8 @@ export default function ImageIntakeClient() {
         setZipFile(null);
         setCardNumbers("");
         setSetCode("");
+        setLang("");
+        setSerie("");
         setDetectedMode(null);
         setOverrideDetection(false);
       }
@@ -772,6 +780,8 @@ export default function ImageIntakeClient() {
     setZipFile(null);
     setCardNumbers("");
     setSetCode("");
+    setLang("");
+    setSerie("");
     setDetectedMode(null);
     setOverrideDetection(false);
   }
@@ -794,6 +804,51 @@ export default function ImageIntakeClient() {
             <div className="text-[12px] font-semibold text-white mb-4">Submission details</div>
 
             <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-[11px] text-white/55 mb-1.5">
+                  Language
+                </label>
+                <select
+                  value={lang}
+                  onChange={(e) => setLang(e.target.value)}
+                  disabled={status === "uploading" || UPLOADS_TEMPORARILY_DISABLED}
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[13px] text-white outline-none focus:border-white/25 transition disabled:opacity-50"
+                >
+                  <option value="" disabled>Select language…</option>
+                  <option value="en">English (en)</option>
+                  <option value="ja">Japanese (ja)</option>
+                  <option value="fr">French (fr)</option>
+                  <option value="de">German (de)</option>
+                  <option value="es">Spanish (es)</option>
+                  <option value="it">Italian (it)</option>
+                  <option value="pt">Portuguese (pt)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-white/55 mb-1.5">
+                  Series
+                </label>
+                <select
+                  value={serie}
+                  onChange={(e) => setSerie(e.target.value)}
+                  disabled={status === "uploading" || UPLOADS_TEMPORARILY_DISABLED}
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[13px] text-white outline-none focus:border-white/25 transition disabled:opacity-50"
+                >
+                  <option value="" disabled>Select series…</option>
+                  <option value="me">Mega Evolution</option>
+                  <option value="sv">Scarlet & Violet</option>
+                  <option value="swsh">Sword & Shield</option>
+                  <option value="sm">Sun & Moon</option>
+                  <option value="xy">XY</option>
+                  <option value="hgss">HeartGold & SoulSilver</option>
+                  <option value="pl">Platinum</option>
+                  <option value="wotc">Wizards of the Coast</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 mt-4">
               <div>
                 <label className="block text-[11px] text-white/55 mb-1.5">
                   Set code <span className="text-white/30">(leave blank for multi-set zip)</span>
@@ -839,7 +894,7 @@ export default function ImageIntakeClient() {
                     key={`${i}-${raw}`}
                     className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] text-white/60"
                   >
-                    {setCode ? `${setCode}-${padded}` : padded}
+                    {padded}
                   </span>
                 ))}
               </div>
