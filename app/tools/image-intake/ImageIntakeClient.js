@@ -854,8 +854,12 @@ export default function ImageIntakeClient() {
                   <option value="swsh">Sword & Shield</option>
                   <option value="sm">Sun & Moon</option>
                   <option value="xy">XY</option>
+                  <option value="bw">Black & white</option>
+                  <option value="col">Call of Legends</option>
                   <option value="hgss">HeartGold & SoulSilver</option>
                   <option value="pl">Platinum</option>
+                  <option value="dp">Diamond & Pearl</option>
+                  <option value="ex">EX</option>
                   <option value="wotc">Wizards of the Coast</option>
                 </select>
               </div>
