@@ -815,13 +815,26 @@ export default function ImageIntakeClient() {
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[13px] text-white outline-none focus:border-white/25 transition disabled:opacity-50"
                 >
                   <option value="" disabled>Select language…</option>
+
                   <option value="en">English (en)</option>
-                  <option value="ja">Japanese (ja)</option>
                   <option value="fr">French (fr)</option>
-                  <option value="de">German (de)</option>
                   <option value="es">Spanish (es)</option>
+                  <option value="es-mx">Spanish — Mexico (es-mx)</option>
                   <option value="it">Italian (it)</option>
                   <option value="pt">Portuguese (pt)</option>
+                  <option value="pt-br">Portuguese — Brazil (pt-br)</option>
+                  <option value="pt-pt">Portuguese — Portugal (pt-pt)</option>
+                  <option value="de">German (de)</option>
+                  <option value="nl">Dutch (nl)</option>
+                  <option value="pl">Polish (pl)</option>
+                  <option value="ru">Russian (ru)</option>
+
+                  <option value="ja">Japanese (ja)</option>
+                  <option value="ko">Korean (ko)</option>
+                  <option value="zh-tw">Chinese — Traditional / Taiwan (zh-tw)</option>
+                  <option value="id">Indonesian (id)</option>
+                  <option value="th">Thai (th)</option>
+                  <option value="zh-cn">Chinese — Simplified / China (zh-cn)</option>
                 </select>
               </div>
 
