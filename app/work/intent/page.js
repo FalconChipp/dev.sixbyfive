@@ -281,13 +281,13 @@ git commit -m "Refactor auth middleware for session token compliance"`}
             name="intent-cli"
             pkg="@dev-sixbyfive/intent-cli"
             desc="Commander.js CLI. A thin command layer — all business logic lives in core. Install directly if you only need the CLI and not the MCP server."
-            items={["intent init", "intent plan", "intent decision", "intent review-diff", "intent export", "intent agent"]}
+            items={["intent init", "intent plan", "intent decision", "intent constraint", "intent search", "intent review-diff", "intent export", "intent agent"]}
           />
           <PackageCard
             name="intent-mcp"
             pkg="@dev-sixbyfive/intent-mcp"
-            desc="MCP server exposing 11 Intent tools via stdio. Configure once in your AI agent and it has access to your repository's full reasoning context. Install directly if you only need the server."
-            items={["intent_context", "intent_review_diff", "intent_agent_prepare", "intent_agent_review", "11 tools total"]}
+            desc="MCP server exposing 13 Intent tools via stdio. Configure once in your AI agent and it has access to your repository's full reasoning context. Install directly if you only need the server."
+            items={["intent_context", "intent_review_diff", "intent_agent_prepare", "intent_agent_review", "intent_search", "intent_list_constraints", "13 tools total"]}
           />
 
           <div style={{ marginTop: 8 }}>
@@ -486,13 +486,19 @@ appear in application log output. Compliance requirement.`}
             <CommandRow cmd="intent plan create <name>" desc="Create a new plan at .intent/plans/<name>.md with a structured template." sub={[
               { cmd: "--title <t>", desc: "Plan title." },
               { cmd: "--system <s>", desc: "Assign to a system." },
-              { cmd: "--status <s>", desc: "Initial status (default: active)." },
+              { cmd: "--status <s>", desc: "Initial status (default: draft)." },
             ]} />
-            <CommandRow cmd="intent plan update <name>" desc="Update a plan's status or title without editing the file directly." sub={[
+            <CommandRow cmd="intent plan update <name>" desc="Update a plan's status, title, or system without editing the file directly." sub={[
               { cmd: "--status <s>", desc: "New status: draft | active | archived | superseded." },
               { cmd: "--title <t>", desc: "New title." },
+              { cmd: "--system <s>", desc: "New system." },
             ]} />
-            <CommandRow cmd="intent plan list" desc="List all plans with status, system, and last-updated." />
+            <CommandRow cmd="intent plan show <name>" desc="Show full details of a plan — all metadata and the markdown body." />
+            <CommandRow cmd="intent plan list" desc="List all plans. Supports filtering." sub={[
+              { cmd: "--status <s>", desc: "Filter by status." },
+              { cmd: "--system <s>", desc: "Filter by system." },
+              { cmd: "--tag <t>", desc: "Filter by tag." },
+            ]} />
           </div>
 
           <MonoLabel>Decisions</MonoLabel>
@@ -501,11 +507,17 @@ appear in application log output. Compliance requirement.`}
               { cmd: "--title <t>", desc: "Decision title." },
               { cmd: "--system <s>", desc: "Assign to a system." },
             ]} />
-            <CommandRow cmd="intent decision update <id>" desc="Update a decision's status or title." sub={[
+            <CommandRow cmd="intent decision update <id>" desc="Update a decision's status, title, or system." sub={[
               { cmd: "--status <s>", desc: "New status: draft | active | archived | superseded." },
               { cmd: "--title <t>", desc: "New title." },
+              { cmd: "--system <s>", desc: "New system." },
             ]} />
-            <CommandRow cmd="intent decision list" desc="List all decisions with status and supersession relationships." />
+            <CommandRow cmd="intent decision show <id>" desc="Show full details of a decision — all metadata and the markdown body." />
+            <CommandRow cmd="intent decision list" desc="List all decisions. Supports filtering." sub={[
+              { cmd: "--status <s>", desc: "Filter by status." },
+              { cmd: "--system <s>", desc: "Filter by system." },
+              { cmd: "--tag <t>", desc: "Filter by tag." },
+            ]} />
           </div>
 
           <MonoLabel>Systems</MonoLabel>
@@ -523,7 +535,17 @@ appear in application log output. Compliance requirement.`}
               { cmd: "--severity <s>", desc: "hard or soft." },
               { cmd: "--system <s>", desc: "Assign to a system." },
             ]} />
-            <CommandRow cmd="intent constraint list" desc="List all constraints." />
+            <CommandRow cmd="intent constraint update <id>" desc="Update a constraint's title, severity, or system." sub={[
+              { cmd: "--title <t>", desc: "New title." },
+              { cmd: "--severity <s>", desc: "New severity: hard | soft." },
+              { cmd: "--system <s>", desc: "New system." },
+            ]} />
+            <CommandRow cmd="intent constraint show <id>" desc="Show full details of a constraint — all metadata and the markdown body." />
+            <CommandRow cmd="intent constraint list" desc="List all constraints. Supports filtering." sub={[
+              { cmd: "--severity <s>", desc: "Filter by severity: hard | soft." },
+              { cmd: "--system <s>", desc: "Filter by system." },
+              { cmd: "--tag <t>", desc: "Filter by tag." },
+            ]} />
           </div>
 
           <MonoLabel>Context & querying</MonoLabel>
@@ -537,6 +559,7 @@ appear in application log output. Compliance requirement.`}
                 { cmd: "--base <ref>", desc: "Diff against a branch or commit instead (CI mode)." },
               ]}
             />
+            <CommandRow cmd="intent search <query>" desc="Full-text search across all intent files — plans, decisions, systems, and constraints — ranked by relevance with context excerpts." />
           </div>
 
           <MonoLabel>Maintenance</MonoLabel>
@@ -557,12 +580,16 @@ appear in application log output. Compliance requirement.`}
           <div style={{ marginBottom: 28 }}>
             <CommandRow
               cmd="intent export <target>"
-              desc="Export intent context as a formatted markdown block into the config file your editor or AI tool reads automatically. Updates in place on subsequent runs using intent-context markers."
+              desc="Export intent context — constraints, plans, decisions, systems — to the config file your editor or AI tool reads. Markdown targets update in place using intent-context markers; html and json always overwrite."
               sub={[
                 { cmd: "claude", desc: "Write to CLAUDE.md." },
                 { cmd: "cursor", desc: "Write to .cursor/rules." },
                 { cmd: "copilot", desc: "Write to .github/copilot-instructions.md." },
+                { cmd: "windsurf", desc: "Write to .windsurfrules." },
+                { cmd: "html", desc: "Write to intent-context.html — semantic HTML with embedded JSON blob; best for agent parsing." },
+                { cmd: "json", desc: "Write to intent-context.json — full structured context." },
                 { cmd: "--system <s>", desc: "Filter export to a single system." },
+                { cmd: "--watch", desc: "Re-export automatically on every .intent/ file change. Shows a timestamped line per update. Ctrl+C to stop." },
               ]}
             />
           </div>
@@ -571,14 +598,14 @@ appear in application log output. Compliance requirement.`}
           <div>
             <CommandRow
               cmd="intent agent prepare [task]"
-              desc="Keyword-score all plans, decisions, and systems against a task description and return the most relevant context. Falls back to full context when no task is given."
+              desc="Keyword-score all plans, decisions, systems, and constraints against a task description and return the most relevant context. Persists the task to .intent/.agent-session.json so review can reference it. Falls back to full context when no task is given."
               sub={[
                 { cmd: "--hook", desc: "Emit JSON on stdout — for Claude Code hooks that inject context into the system prompt." },
               ]}
             />
             <CommandRow
               cmd="intent agent review"
-              desc="Review the current diff against documented intent and validate all files. In interactive mode, prompts you to write a draft decision if unlinked changes are detected."
+              desc="Review the current diff against documented intent and validate all files. Loads the task from the last prepare session. In interactive mode, prompts you to write a draft decision if unlinked changes are detected."
               sub={[
                 { cmd: "--base <ref>", desc: "Review against a branch (CI mode)." },
                 { cmd: "--unstaged", desc: "Include unstaged changes." },
@@ -650,17 +677,19 @@ mcpServers:
 
           <MonoLabel style={{ marginTop: 32 }}>Available tools</MonoLabel>
           <div>
-            <ToolRow name="intent_context" sig="(cwd?, system?)" desc="Get all plans, decisions, and systems. Pass system to filter to a single domain." />
+            <ToolRow name="intent_context" sig="(cwd?, system?)" desc="Get all plans, decisions, systems, and constraints. Pass system to filter to a single domain." />
             <ToolRow name="intent_review_diff" sig="(cwd?, staged?, base?)" desc="Get intent context relevant to the current git diff. Set staged: true for staged-only; pass base to diff against a branch." />
-            <ToolRow name="intent_list_plans" sig="(cwd?)" desc="List all plans with status and metadata." />
-            <ToolRow name="intent_list_decisions" sig="(cwd?)" desc="List all decisions with status and supersession relationships." />
-            <ToolRow name="intent_list_systems" sig="(cwd?)" desc="List all system definitions." />
+            <ToolRow name="intent_list_plans" sig="(cwd?, status?, system?, tag?)" desc="List all plans. Accepts status, system, and tag filters." />
+            <ToolRow name="intent_list_decisions" sig="(cwd?, status?, system?, tag?)" desc="List all decisions. Accepts status, system, and tag filters." />
+            <ToolRow name="intent_list_systems" sig="(cwd?, tag?)" desc="List all system definitions. Accepts tag filter." />
+            <ToolRow name="intent_list_constraints" sig="(cwd?, severity?, system?, tag?)" desc="List all constraints. Accepts severity (hard | soft), system, and tag filters." />
+            <ToolRow name="intent_search" sig="(cwd?, query)" desc="Full-text search across all intent files ranked by relevance. Returns matches with type, id, title, and excerpt." />
             <ToolRow name="intent_rebuild_links" sig="(cwd?)" desc="Rebuild the links index after manual edits or branch merges." />
             <ToolRow name="intent_validate" sig="(cwd?)" desc="Validate all documents for schema correctness and broken cross-references. Returns a structured error list." />
             <ToolRow name="intent_status" sig="(cwd?)" desc="Health overview: counts by type, active plans, validation summary, and links index state." />
-            <ToolRow name="intent_agent_prepare" sig="(cwd?, task)" desc="Keyword-score context for relevance to a task and return the most applicable items. Use before starting non-trivial implementation." />
-            <ToolRow name="intent_agent_review" sig="(cwd?, staged?, base?)" desc="Review the diff against documented intent. Flags undocumented decisions and schema violations. Returns suggestDecision signal." />
-            <ToolRow name="intent_export" sig="(cwd?, system?, target)" desc="Export context as markdown or write to IDE config files (claude, cursor, copilot)." />
+            <ToolRow name="intent_agent_prepare" sig="(cwd?, task)" desc="Keyword-score plans, decisions, systems, and constraints for relevance to a task. Persists the task to session for review. Falls back to full context when nothing matches." />
+            <ToolRow name="intent_agent_review" sig="(cwd?, staged?, base?)" desc="Review the diff against documented intent. Returns checklist, suggestDecision signal, and the task from the last prepare session." />
+            <ToolRow name="intent_export" sig="(cwd?, system?, target)" desc="Export context or write to a target file. Targets: claude, cursor, copilot, windsurf, html, json, markdown (return as text)." />
           </div>
 
           <SectionHeading>Example agent workflow</SectionHeading>
