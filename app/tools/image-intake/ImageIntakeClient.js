@@ -840,7 +840,7 @@ export default function ImageIntakeClient() {
 
               <div>
                 <label className="block text-[11px] text-white/55 mb-1.5">
-                  Series
+                  Era
                 </label>
                 <select
                   value={serie}
@@ -848,13 +848,13 @@ export default function ImageIntakeClient() {
                   disabled={status === "uploading" || UPLOADS_TEMPORARILY_DISABLED}
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[13px] text-white outline-none focus:border-white/25 transition disabled:opacity-50"
                 >
-                  <option value="" disabled>Select series…</option>
+                  <option value="" disabled>Select era...</option>
                   <option value="me">Mega Evolution</option>
                   <option value="sv">Scarlet & Violet</option>
                   <option value="swsh">Sword & Shield</option>
                   <option value="sm">Sun & Moon</option>
                   <option value="xy">XY</option>
-                  <option value="bw">Black & white</option>
+                  <option value="bw">Black & White</option>
                   <option value="col">Call of Legends</option>
                   <option value="hgss">HeartGold & SoulSilver</option>
                   <option value="pl">Platinum</option>
