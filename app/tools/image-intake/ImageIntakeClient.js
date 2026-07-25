@@ -861,6 +861,7 @@ export default function ImageIntakeClient() {
                   <option value="dp">Diamond & Pearl</option>
                   <option value="ex">EX</option>
                   <option value="wotc">Wizards of the Coast</option>
+                  <option value="mcds">McDonalds</option>
                 </select>
               </div>
             </div>
