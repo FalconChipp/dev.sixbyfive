@@ -11,10 +11,8 @@ const data = {
   tagline: "A workflow portal that replaced spreadsheets and email with a system that actually fits how the business operates.",
   type: "Vertical SaaS",
   role: "Built & maintained",
-  status: "Live",
+  status: "Archived",
   year: "2024",
-  externalHref: "https://3dprinting.sixbyfive.com",
-  externalLabel: "View portal ↗",
 
   problem: [
     "The client ran a 3D printing service handling print-on-demand requests for customers — custom parts, models, and prototypes. The operation was entirely manual: quote requests came in by email, files were attached to threads, status updates were sent by hand, and job tracking lived in a spreadsheet that only one person could update at a time.",

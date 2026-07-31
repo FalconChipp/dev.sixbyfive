@@ -12,7 +12,7 @@ const data = {
   type: "Open Source",
   role: "Maintainer",
   status: "Active",
-  year: "2023–present",
+  year: "Early 2026–present",
   externalHref: "https://tcgdex.dev",
   externalLabel: "tcgdex.dev ↗",
 

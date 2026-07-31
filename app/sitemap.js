@@ -59,6 +59,12 @@ export default function sitemap() {
       priority: 0.7,
     },
     {
+      url: `${SITE_URL}/work/kora`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
       url: `${SITE_URL}/work/3d-printing-portal`,
       lastModified: now,
       changeFrequency: "monthly",

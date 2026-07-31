@@ -34,12 +34,12 @@ const workPreview = [
     badge: "5 projects",
   },
   {
-    title: "3D Printing Portal",
+    title: "Kora",
     type: "Vertical SaaS",
     role: "Built & maintained",
-    description: "Workflow portal replacing email threads and spreadsheets for a 3D print service — quote requests, file uploads, automated notifications, and admin oversight.",
-    stack: "Next.js · Node.js · email notifications",
-    href: "/work/3d-printing-portal",
+    description: "Outcomes platform for residential young person care — shift logs, incident recording, and medication tracking feed an analytical layer that surfaces patterns and generates statutory reports automatically.",
+    stack: "Node.js · PostgreSQL · desktop app · offline sync",
+    href: "/work/kora",
     external: false,
   },
 ];
