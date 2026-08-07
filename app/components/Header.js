@@ -18,6 +18,7 @@ const navLinks = [
   { href: "/work",     label: "Work" },
   { href: "/services", label: "Services" },
   { href: "/process",  label: "Process" },
+  { href: "/games",    label: "Games" },
   { href: "https://tcg.sixbyfive.com", label: "TCG ↗", external: true },
 ];
 
