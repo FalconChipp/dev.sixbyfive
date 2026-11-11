@@ -2,25 +2,38 @@ import Link from 'next/link'
 
 export const metadata = {
   title: 'Games — SixByFive Studio',
-  description: 'Browser games built by SixByFive. Daily puzzles and more.',
+  description: 'Games and game technology from SixByFive.',
 }
 
 const games = [
   {
-    href: '/games/songle',
-    title: 'Songle',
-    tag: 'Daily puzzle',
-    status: 'Free',
-    summary: 'Guess the song from its attributes.',
+    href: 'https://outgrowingwake.sixbyfive.com',
+    title: 'Outgrowing Wake',
+    tag: 'Strategy game',
+    status: 'Wishlist on Steam',
+    summary: 'Grow one world into a civilisation.',
     description:
-      'A new song every day. Search for your guess and see how the attributes compare — artist, year, genre, and album. Green means correct, amber means close. You have 8 guesses.',
+      'Start on a single planet and expand to a system, a sector, and a galaxy that keeps going while you are away. Every return starts with a briefing of what actually happened.',
     features: [
-      'New puzzle every day',
-      'Search across the full song library',
-      'Attribute comparison with directional hints on year',
-      'Shareable result grid',
-      'Progress saved in your browser',
+      'Planet, system, sector and galaxy scales',
+      'Your colonies keep producing while the game is closed',
+      'Shipments take real time to cross space',
+      'Research, fleets and diplomacy with other empires',
+      'Single-player now, shared galaxy in development',
     ],
+    cta: 'Visit Outgrowing Wake →',
+    ctaHref: 'https://outgrowingwake.sixbyfive.com',
+    secondary: { label: 'Wishlist on Steam ↗', href: 'https://store.steampowered.com/app/3298070' },
+  },
+  {
+    href: '#universe-engine',
+    title: 'Universe Engine',
+    tag: 'Engine',
+    status: 'In development',
+    summary: 'The engine behind Outgrowing Wake.',
+    description:
+      'The simulation engine that runs the galaxy in Outgrowing Wake, built by SixByFive.',
+    features: [],
   },
 ]
 
@@ -48,10 +61,10 @@ export default function GamesPage() {
             className="display"
             style={{ fontSize: 'clamp(36px, 5vw, 58px)', color: 'var(--text)', maxWidth: 640, marginBottom: 20 }}
           >
-            Daily puzzles
+            Games and engine
           </h1>
           <p style={{ fontSize: 15, color: 'var(--text-2)', maxWidth: 480, lineHeight: 1.65 }}>
-            Browser games built for fun. New puzzles drop daily.
+            Outgrowing Wake, and the Universe Engine that powers it.
           </p>
         </div>
       </section>
@@ -59,14 +72,14 @@ export default function GamesPage() {
       <div className="hr" />
 
       {games.map((g, i) => (
-        <div key={g.href}>
+        <div key={g.title} id={g.href.startsWith('#') ? g.href.slice(1) : undefined}>
           <section style={{ padding: '72px 0' }}>
             <div className="wrap">
               <div className="section-grid">
                 <div style={{ paddingTop: 4 }}>
                   <span className="pill" style={{ display: 'inline-flex', marginBottom: 10 }}>{g.tag}</span>
                   <div>
-                    <span className={`pill ${g.status === 'Free' ? 'pill-live' : ''}`} style={{ display: 'inline-flex' }}>
+                    <span className={`pill ${g.ctaHref ? 'pill-live' : ''}`} style={{ display: 'inline-flex' }}>
                       {g.status}
                     </span>
                   </div>
@@ -83,7 +96,7 @@ export default function GamesPage() {
                     {g.description}
                   </p>
 
-                  <div style={{ marginBottom: 36 }}>
+                  {g.features.length > 0 && <div style={{ marginBottom: 36 }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-4)', display: 'block', marginBottom: 16 }}>
                       How it works
                     </span>
@@ -95,9 +108,14 @@ export default function GamesPage() {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </div>}
 
-                  <Link href={g.href} className="btn btn-primary">Play today&apos;s puzzle →</Link>
+                  {g.ctaHref && (
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <a href={g.ctaHref} target="_blank" rel="noreferrer" className="btn btn-primary">{g.cta}</a>
+                      <a href={g.secondary.href} target="_blank" rel="noreferrer" className="btn btn-secondary">{g.secondary.label}</a>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
